@@ -1,4 +1,4 @@
-name: YouTube AutoPost
+name: YouTube Automation
 
 on:
   workflow_dispatch:
@@ -7,15 +7,33 @@ jobs:
   autopost:
     runs-on: ubuntu-latest
 
+    env:
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Login to Hugging Face
+        run: |
+          pip install huggingface_hub
+          echo "${{ secrets.HUGGINGFACE_API_KEY }}" | huggingface-cli login --token
+
       - name: Init folders
         run: python init_folders.py
+
       - name: Run YouTube Automation
         run: |
           python generate_topic.py
