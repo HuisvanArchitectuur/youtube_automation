@@ -1,10 +1,10 @@
 transformers
 torch
 requests
-Pillow
+Pillow>=9.2.0
 ffmpeg-python
 python-dotenv
-TTS   # Coqui TTS voor voice-over
+TTS     # Coqui TTS voor voice-over
 google-api-python-client
 oauth2client
 tqdm
