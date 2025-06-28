@@ -1,18 +1,22 @@
-import openai
+from PIL import Image, ImageDraw, ImageFont
 import os
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-prompt = "Felle clickbait thumbnail voor het onderwerp: ..."  # Vul titel of topic in
+visual_path = 'data/videos/visual.jpg'
+thumbnail_path = 'data/thumbnails/thumb.png'
 
-response = openai.Image.create(
-    prompt=prompt,
-    n=1,
-    size="1280x720"
-)
-image_url = response['data'][0]['url']
-import requests
-img_data = requests.get(image_url).content
-with open('data/thumbnails/thumb.png', 'wb') as handler:
-    handler.write(img_data)
+image = Image.open(visual_path).convert("RGB")
+draw = ImageDraw.Draw(image)
+font = ImageFont.truetype("arial.ttf", 60)  # Zorg dat je Arial.ttf hebt, anders andere font gebruiken.
 
-print("Thumbnail gegenereerd!")
+text = "KIJK DIT!"  # Maak dynamisch op basis van je onderwerp of video titel
+
+width, height = image.size
+textwidth, textheight = draw.textsize(text, font=font)
+x = (width - textwidth) // 2
+y = height - textheight - 20
+
+draw.rectangle([(x-20, y-20), (x+textwidth+20, y+textheight+20)], fill="yellow")
+draw.text((x, y), text, font=font, fill="black")
+image.save(thumbnail_path)
+
+print(f"Thumbnail opgeslagen als {thumbnail_path}")
