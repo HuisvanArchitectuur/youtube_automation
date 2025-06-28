@@ -7,13 +7,20 @@ import os
 
 print("[DEBUG] Start script")
 
+# Locatie van het client secret JSON-bestand (download vanuit Google Cloud Console)
+# Dit bestand zit *niet* in je Git repo, hou het lokaal.
 CLIENT_SECRETS_FILE = "client_secret.json"
+
+# OAuth scope die je nodig hebt voor uploaden naar YouTube
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
-print("[DEBUG] Controleer oauth2.json (credentials ophalen)")
-storage = Storage("oauth2.json")
+# Hier sla je de OAuth tokens op zodat je niet telkens opnieuw hoeft in te loggen
+TOKEN_FILE = "oauth2.json"
+
+print("[DEBUG] Controleer of token file bestaat (credentials ophalen)")
+storage = Storage(TOKEN_FILE)
 credentials = storage.get()
 
 if credentials is None or credentials.invalid:
@@ -39,13 +46,21 @@ body = dict(
     )
 )
 
+# Let op: check of je pad naar je video correct is
+VIDEO_PATH = 'data/videos/output.mp4'
+
 print("[DEBUG] Zet MediaFileUpload klaar")
-media = MediaFileUpload('data/videos/output.mp4', resumable=True)
+media = MediaFileUpload(VIDEO_PATH, resumable=True)
 
 print("[DEBUG] Maak YouTube insert request aan")
-request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+request = youtube.videos().insert(
+    part="snippet,status",
+    body=body,
+    media_body=media
+)
 
 print("[DEBUG] Voer upload uit (request.execute())")
 response = request.execute()
 
 print("[DEBUG] Video geüpload!")
+print(response)
