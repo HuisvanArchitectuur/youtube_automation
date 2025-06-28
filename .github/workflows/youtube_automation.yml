@@ -29,7 +29,7 @@ jobs:
       - name: Login to Hugging Face
         run: |
           pip install huggingface_hub
-          echo "${{ secrets.HUGGINGFACE_API_KEY }}" | huggingface-cli login --token
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_API_KEY }}
 
       - name: Init folders
         run: python init_folders.py
