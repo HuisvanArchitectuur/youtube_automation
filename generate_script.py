@@ -2,7 +2,7 @@ from transformers import pipeline
 import json
 import os
 
-generator = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf')
+generator = pipeline('text-generation', model='google/flan-t5-small')
 
 with open('data/trending_topics.json') as f:
     topics = json.load(f)
