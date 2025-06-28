@@ -5,7 +5,6 @@ from oauth2client.tools import run_flow
 from oauth2client.client import flow_from_clientsecrets
 import os
 
-# Zie YouTube API v3 Python docs voor volledige set-up
 CLIENT_SECRETS_FILE = "client_secret.json"
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
@@ -19,9 +18,9 @@ if credentials is None or credentials.invalid:
 
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
 
-body=dict(
+body = dict(
     snippet=dict(
-        title="Clickbait titel hier",  # Genereer via GPT!
+        title="Clickbait titel (automatisch invullen!)",
         description="Automatisch gegenereerde beschrijving.",
         tags=["AI", "trending", "hack"],
         categoryId="28"
