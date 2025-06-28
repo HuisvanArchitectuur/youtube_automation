@@ -37,7 +37,11 @@ jobs:
         run: python init_folders.py
 
       - name: Maak client_secret.json aan vanuit secret
-        run: echo "${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}" > client_secret.json
+        run: |
+          cat <<EOF > client_secret.json
+          ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          EOF
+
 
       - name: Run YouTube Automation
         run: |
