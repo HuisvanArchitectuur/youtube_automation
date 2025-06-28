@@ -36,6 +36,9 @@ jobs:
       - name: Init folders
         run: python init_folders.py
 
+      - name: Maak client_secret.json aan vanuit secret
+        run: echo "${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}" > client_secret.json
+
       - name: Run YouTube Automation
         run: |
           python generate_topic.py
