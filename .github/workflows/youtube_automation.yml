@@ -1,3 +1,8 @@
+name: YouTube Automation
+
+on:
+  workflow_dispatch:
+
 jobs:
   autopost:
     runs-on: ubuntu-latest
@@ -20,7 +25,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # >>>>> HIER TOEVOEGEN! <<<<<
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
