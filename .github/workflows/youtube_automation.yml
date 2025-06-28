@@ -1,12 +1,6 @@
-name: YouTube Automation
-
-on:
-  workflow_dispatch:
-
 jobs:
   autopost:
     runs-on: ubuntu-latest
-
     env:
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
@@ -26,20 +20,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # >>>>> HIER TOEVOEGEN! <<<<<
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Login to Hugging Face
         run: |
           pip install huggingface_hub
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_API_KEY }}
 
       - name: Init folders
-        run: python init_folders.py
-
-      - name: Run YouTube Automation
-        run: |
-          python generate_topic.py
-          python generate_script.py
-          python generate_voiceover.py
-          python generate_visuals.py
-          python assemble_video.py
-          python generate_thumbnail.py
-          python upload_to_youtube.py
+        run: pytho
