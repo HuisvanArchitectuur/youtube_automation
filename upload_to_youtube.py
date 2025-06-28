@@ -4,14 +4,40 @@ from oauth2client.file import Storage
 from oauth2client.tools import run_flow
 from oauth2client.client import flow_from_clientsecrets
 import os
+import json
 
 print("[DEBUG] Start script")
 
+# Veronderstel dat secrets als env vars worden gezet in GitHub Actions
+CLIENT_SECRET_JSON_ENV = "YOUTUBE_CLIENT_SECRET_JSON"
+OAUTH2_JSON_ENV = "YOUTUBE_REFRESH_TOKEN_JSON"
+
 CLIENT_SECRETS_FILE = "client_secret.json"
+TOKEN_FILE = "oauth2.json"
+
+# Schrijf de client_secret.json naar disk als die niet bestaat (vanuit env var)
+if not os.path.isfile(CLIENT_SECRETS_FILE):
+    print(f"[DEBUG] Schrijf {CLIENT_SECRETS_FILE} vanuit environment variable")
+    secret_json = os.getenv(CLIENT_SECRET_JSON_ENV)
+    if secret_json:
+        with open(CLIENT_SECRETS_FILE, "w") as f:
+            f.write(secret_json)
+    else:
+        print(f"[ERROR] Environment variable {CLIENT_SECRET_JSON_ENV} niet gevonden!")
+
+# Schrijf de oauth2.json naar disk als die niet bestaat (vanuit env var)
+if not os.path.isfile(TOKEN_FILE):
+    print(f"[DEBUG] Schrijf {TOKEN_FILE} vanuit environment variable")
+    token_json = os.getenv(OAUTH2_JSON_ENV)
+    if token_json:
+        with open(TOKEN_FILE, "w") as f:
+            f.write(token_json)
+    else:
+        print(f"[ERROR] Environment variable {OAUTH2_JSON_ENV} niet gevonden!")
+
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
-TOKEN_FILE = "oauth2.json"
 
 print("[DEBUG] Controleer of token file bestaat (credentials ophalen)")
 storage = Storage(TOKEN_FILE)
