@@ -1,20 +1,29 @@
-import openai
 import os
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-prompt = "AI visualisatie van het onderwerp: ..."  # Zelfde als topic, eventueel script samenvatten
-
-response = openai.Image.create(
-    prompt=prompt,
-    n=1,
-    size="1024x1024"
-)
-image_url = response['data'][0]['url']
-# Download plaatje
 import requests
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
+
+with open('data/trending_topics.json') as f:
+    topics = json.load(f)
+
+topic = topics[0]
+
+headers = {
+    "Authorization": PEXELS_API_KEY
+}
+
+url = f"https://api.pexels.com/v1/search?query={topic}&per_page=1"
+response = requests.get(url, headers=headers)
+data = response.json()
+
+image_url = data['photos'][0]['src']['large']
 img_data = requests.get(image_url).content
-with open('data/videos/visual.png', 'wb') as handler:
+
+visual_path = f"data/videos/visual.jpg"
+with open(visual_path, 'wb') as handler:
     handler.write(img_data)
 
-print("Visual gemaakt!")
+print(f"Visual opgeslagen als {visual_path}")
