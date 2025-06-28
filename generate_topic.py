@@ -2,7 +2,7 @@ from transformers import pipeline
 import json
 
 # LLM voor onderwerpen genereren
-generator = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf')
+generator = pipeline('text-generation', model='google/flan-t5-small')
 
 prompt = "Noem 5 trending onderwerpen over AI tools, tech-hacks of automatisering, elk in 1 zin."
 
