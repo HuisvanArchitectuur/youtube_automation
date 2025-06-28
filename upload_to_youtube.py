@@ -1,34 +1,28 @@
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from oauth2client.client import OAuth2Credentials
+from oauth2client.file import Storage
+from oauth2client.tools import run_flow
+from oauth2client.client import flow_from_clientsecrets
 import os
 
 print("[DEBUG] Start script")
 
-# OAuth scope en API info
+CLIENT_SECRETS_FILE = "client_secret.json"
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
+TOKEN_FILE = "oauth2.json"
 
-# Haal client ID, client secret en refresh token uit environment variables (van GitHub Secrets)
-CLIENT_ID = os.getenv("YOUTUBE_CLIENT_ID")
-CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET")
-REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN")
+print("[DEBUG] Controleer of token file bestaat (credentials ophalen)")
+storage = Storage(TOKEN_FILE)
+credentials = storage.get()
 
-if not all([CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]):
-    raise Exception("Missende environment variables voor YouTube API: check YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET en YOUTUBE_REFRESH_TOKEN")
-
-print("[DEBUG] Maak OAuth2 credentials aan vanuit refresh token")
-credentials = OAuth2Credentials(
-    access_token=None,
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    refresh_token=REFRESH_TOKEN,
-    token_expiry=None,
-    token_uri="https://oauth2.googleapis.com/token",
-    user_agent=None,
-    scopes=[YOUTUBE_UPLOAD_SCOPE]
-)
+if credentials is None or credentials.invalid:
+    print("[DEBUG] Geen geldige credentials gevonden, start authenticatie-flow")
+    flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=YOUTUBE_UPLOAD_SCOPE)
+    credentials = run_flow(flow, storage)
+else:
+    print("[DEBUG] Credentials OK, ga verder")
 
 print("[DEBUG] Bouw YouTube client")
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
@@ -46,7 +40,6 @@ body = dict(
     )
 )
 
-# Let op: check of je pad naar je video correct is
 VIDEO_PATH = 'data/videos/output.mp4'
 
 print("[DEBUG] Zet MediaFileUpload klaar")
