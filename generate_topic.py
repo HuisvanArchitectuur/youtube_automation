@@ -4,8 +4,7 @@ import json
 generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
 prompt = (
-    "Noem 5 trending onderwerpen over AI tools, tech-hacks of automatisering, "
-    "in het Nederlands. Zet elk onderwerp op een aparte regel, alleen het onderwerp (dus geen nummering of extra uitleg)."
+    "Noem 5 trending onderwerpen over AI tools, tech-hacks of automatisering, in het Nederlands. Zet elk onderwerp op een aparte regel, alleen het onderwerp (dus geen nummering of extra uitleg)."
 )
 
 results = generator(prompt, max_length=100)
