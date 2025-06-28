@@ -1,34 +1,31 @@
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from oauth2client.file import Storage
-from oauth2client.tools import run_flow
-from oauth2client.client import flow_from_clientsecrets
+from google.oauth2.credentials import Credentials
 import os
 
 print("[DEBUG] Start script")
-
-# Locatie van het client secret JSON-bestand (download vanuit Google Cloud Console)
-# Dit bestand zit *niet* in je Git repo, hou het lokaal.
-CLIENT_SECRETS_FILE = "client_secret.json"
 
 # OAuth scope die je nodig hebt voor uploaden naar YouTube
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
-# Hier sla je de OAuth tokens op zodat je niet telkens opnieuw hoeft in te loggen
-TOKEN_FILE = "oauth2.json"
+# Pak secrets uit environment variables (deze zet je in GitHub Secrets)
+CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+REFRESH_TOKEN = os.getenv('YOUTUBE_REFRESH_TOKEN')
 
-print("[DEBUG] Controleer of token file bestaat (credentials ophalen)")
-storage = Storage(TOKEN_FILE)
-credentials = storage.get()
+if not CLIENT_ID or not CLIENT_SECRET or not REFRESH_TOKEN:
+    raise Exception("Je mist een of meerdere benodigde secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN")
 
-if credentials is None or credentials.invalid:
-    print("[DEBUG] Geen geldige credentials gevonden, start authenticatie-flow")
-    flow = flow_from_clientsecrets(CLIENT_SECRETS_FILE, scope=YOUTUBE_UPLOAD_SCOPE)
-    credentials = run_flow(flow, storage)
-else:
-    print("[DEBUG] Credentials OK, ga verder")
+print("[DEBUG] Credentials ophalen vanuit environment variables")
+credentials = Credentials(
+    None,
+    refresh_token=REFRESH_TOKEN,
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    token_uri="https://oauth2.googleapis.com/token"
+)
 
 print("[DEBUG] Bouw YouTube client")
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
