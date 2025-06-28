@@ -1,10 +1,10 @@
-openai
+transformers
+torch
 requests
-pytube
-google-api-python-client
-oauth2client
-tqdm
-elevenlabs
 Pillow
 ffmpeg-python
 python-dotenv
+TTS   # Coqui TTS voor voice-over
+google-api-python-client
+oauth2client
+tqdm
