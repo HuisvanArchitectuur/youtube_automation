@@ -1,0 +1,10 @@
+openai
+requests
+pytube
+google-api-python-client
+oauth2client
+tqdm
+elevenlabs
+Pillow
+ffmpeg-python
+python-dotenv
