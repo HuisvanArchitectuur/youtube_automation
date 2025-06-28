@@ -40,6 +40,10 @@ jobs:
         run: |
           echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' | python3 -c "import sys, json; json.dump(json.loads(sys.stdin.read()), open('client_secret.json','w'))"
 
+      - name: Maak oauth2.json aan vanuit secret
+        run: |
+          echo '${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}' > oauth2.json
+
       - name: Run YouTube Automation
         run: |
           python generate_topic.py
