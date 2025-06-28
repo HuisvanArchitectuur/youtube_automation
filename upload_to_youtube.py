@@ -1,30 +1,33 @@
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from google.oauth2.credentials import Credentials
+from oauth2client.client import OAuth2Credentials
 import os
 
 print("[DEBUG] Start script")
 
-# OAuth scope die je nodig hebt voor uploaden naar YouTube
+# OAuth scope en API info
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
-# Pak secrets uit environment variables (deze zet je in GitHub Secrets)
-CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-REFRESH_TOKEN = os.getenv('YOUTUBE_REFRESH_TOKEN')
+# Haal client ID, client secret en refresh token uit environment variables (van GitHub Secrets)
+CLIENT_ID = os.getenv("YOUTUBE_CLIENT_ID")
+CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET")
+REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN")
 
-if not CLIENT_ID or not CLIENT_SECRET or not REFRESH_TOKEN:
-    raise Exception("Je mist een of meerdere benodigde secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN")
+if not all([CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]):
+    raise Exception("Missende environment variables voor YouTube API: check YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET en YOUTUBE_REFRESH_TOKEN")
 
-print("[DEBUG] Credentials ophalen vanuit environment variables")
-credentials = Credentials(
-    None,
-    refresh_token=REFRESH_TOKEN,
+print("[DEBUG] Maak OAuth2 credentials aan vanuit refresh token")
+credentials = OAuth2Credentials(
+    access_token=None,
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
-    token_uri="https://oauth2.googleapis.com/token"
+    refresh_token=REFRESH_TOKEN,
+    token_expiry=None,
+    token_uri="https://oauth2.googleapis.com/token",
+    user_agent=None,
+    scopes=[YOUTUBE_UPLOAD_SCOPE]
 )
 
 print("[DEBUG] Bouw YouTube client")
