@@ -1,11 +1,19 @@
 from transformers import pipeline
 import json
+import glob
+import os
 
 generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
-# Laad het script en splits in scenes
-with open('data/scripts/NAAM_VAN_SCRIPT.txt', 'r') as f:
+# --- Vind automatisch het nieuwste scriptbestand ---
+scripts = sorted(glob.glob("data/scripts/*.txt"), reverse=True)
+if not scripts:
+    raise FileNotFoundError("Geen scripts gevonden in data/scripts/")
+script_path = scripts[0]
+with open(script_path, 'r') as f:
     script_text = f.read()
+# --------------------------------------------------
+
 scenes = [s.strip() for s in script_text.split('.') if s.strip()]
 
 voiceover_texts = []
