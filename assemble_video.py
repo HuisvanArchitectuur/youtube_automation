@@ -42,8 +42,8 @@ with open(concat_file, "w") as f:
 # 6. Genereer video met beeldwissels
 tmp_video = "data/videos/tmp_visuals.mp4"
 cmd_img2vid = (
-    f"ffmpeg -y -f concat -safe 0 -i {concat_file} "
-    f"-vsync vfr -pix_fmt yuv420p -vf scale=940:528 -r 25 {tmp_video}"
+     f"ffmpeg -y -f concat -safe 0 -i {concat_file} -pix_fmt yuv420p -vf scale=940:528 -r 25 {tmp_video}"
+    -pix_fmt yuv420p -vf scale=940:528 -r 25 {tmp_video}"
 )
 print(f"[DEBUG] Run images->video: {cmd_img2vid}")
 if os.system(cmd_img2vid) != 0:
