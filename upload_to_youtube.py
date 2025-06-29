@@ -10,7 +10,7 @@ import signal
 import sys
 import traceback
 
-print("[DEBUG] Start script")
+print("[DEBUG] Stap 1: Start script")
 
 CLIENT_SECRET_JSON_ENV = "YOUTUBE_CLIENT_SECRET_JSON"
 OAUTH2_JSON_ENV = "YOUTUBE_REFRESH_TOKEN_JSON"
@@ -24,28 +24,28 @@ def debug_list_folder(path):
     except Exception as e:
         print(f"[DEBUG] Kan inhoud van {path} niet tonen: {e}")
 
-print("[DEBUG] Huidige working dir:", os.getcwd())
+print("[DEBUG] Stap 2: Huidige working dir:", os.getcwd())
 debug_list_folder(".")
 debug_list_folder("data")
 debug_list_folder("data/videos")
 
-# Schrijf de client_secret.json naar disk als die niet bestaat (vanuit env var)
+print("[DEBUG] Stap 3: Check/maak client_secret.json")
 if not os.path.isfile(CLIENT_SECRETS_FILE):
-    print(f"[DEBUG] Schrijf {CLIENT_SECRETS_FILE} vanuit environment variable")
     secret_json = os.getenv(CLIENT_SECRET_JSON_ENV)
     if secret_json:
         with open(CLIENT_SECRETS_FILE, "w") as f:
             f.write(secret_json)
+        print("[DEBUG] client_secret.json aangemaakt")
     else:
         print(f"[ERROR] Environment variable {CLIENT_SECRET_JSON_ENV} niet gevonden!")
 
-# Schrijf de oauth2.json naar disk als die niet bestaat (vanuit env var)
+print("[DEBUG] Stap 4: Check/maak oauth2.json")
 if not os.path.isfile(TOKEN_FILE):
-    print(f"[DEBUG] Schrijf {TOKEN_FILE} vanuit environment variable")
     token_json = os.getenv(OAUTH2_JSON_ENV)
     if token_json:
         with open(TOKEN_FILE, "w") as f:
             f.write(token_json)
+        print("[DEBUG] oauth2.json aangemaakt")
     else:
         print(f"[ERROR] Environment variable {OAUTH2_JSON_ENV} niet gevonden!")
 
@@ -53,7 +53,7 @@ YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
-print("[DEBUG] Controleer of token file bestaat (credentials ophalen)")
+print("[DEBUG] Stap 5: Credentials ophalen")
 storage = Storage(TOKEN_FILE)
 credentials = storage.get()
 
@@ -64,10 +64,10 @@ if credentials is None or credentials.invalid:
 else:
     print("[DEBUG] Credentials OK, ga verder")
 
-print("[DEBUG] Bouw YouTube client")
+print("[DEBUG] Stap 6: Bouw YouTube client")
 youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
 
-print("[DEBUG] Bouw request body op")
+print("[DEBUG] Stap 7: Bouw request body op")
 body = dict(
     snippet=dict(
         title="Clickbait titel (automatisch invullen!)",
@@ -82,16 +82,20 @@ body = dict(
 
 VIDEO_PATH = 'data/videos/output.mp4'
 
+print("[DEBUG] Stap 8: Controleer of video-bestand bestaat")
 if not os.path.exists(VIDEO_PATH):
     print(f"[ERROR] Video-bestand bestaat niet: {VIDEO_PATH}")
     sys.exit(1)
 else:
-    print(f"[DEBUG] Video-bestand gevonden: {VIDEO_PATH}, grootte: {os.path.getsize(VIDEO_PATH)} bytes")
+    size_bytes = os.path.getsize(VIDEO_PATH)
+    print(f"[DEBUG] Video-bestand gevonden: {VIDEO_PATH}, grootte: {size_bytes} bytes")
+    size_mb = size_bytes / (1024 * 1024)
+    print(f"[DEBUG] Bestandsgrootte in MB: {size_mb:.2f} MB")
 
-print("[DEBUG] Zet MediaFileUpload klaar")
+print("[DEBUG] Stap 9: Zet MediaFileUpload klaar")
 media = MediaFileUpload(VIDEO_PATH, resumable=True, chunksize=5*1024*1024)  # 5 MB chunks
 
-print("[DEBUG] Maak YouTube insert request aan")
+print("[DEBUG] Stap 10: Maak YouTube insert request aan")
 request = youtube.videos().insert(
     part="snippet,status",
     body=body,
@@ -107,7 +111,7 @@ UPLOAD_TIMEOUT_SECONDS = 900  # 15 minuten
 signal.alarm(UPLOAD_TIMEOUT_SECONDS)
 
 try:
-    print(f"[DEBUG] Start upload met voortgang (timeout op {UPLOAD_TIMEOUT_SECONDS // 60} minuten)")
+    print(f"[DEBUG] Stap 11: Start upload met voortgang (timeout op {UPLOAD_TIMEOUT_SECONDS // 60} minuten)")
     response = None
     while response is None:
         status, response = request.next_chunk()
@@ -127,4 +131,4 @@ except Exception as e:
 finally:
     signal.alarm(0)  # Zet alarm uit
 
-print("[DEBUG] Einde uploadscript")
+print("[DEBUG] Stap 12: Einde uploadscript")
