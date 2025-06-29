@@ -44,12 +44,23 @@ jobs:
         run: |
           echo '${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}' > oauth2.json
 
-      - name: Run YouTube Automation
-        run: |
-          python generate_topic.py
-          python generate_script.py
-          python generate_voiceover.py
-          python generate_visuals.py
-          python assemble_video.py
-          python generate_thumbnail.py
-          python upload_to_youtube.py
+      - name: Genereer topic
+        run: python generate_topic.py
+
+      - name: Genereer script
+        run: python generate_script.py
+
+      - name: Genereer voiceover
+        run: python generate_voiceover.py
+
+      - name: Genereer visuals
+        run: python generate_visuals.py
+
+      - name: Assembleer video
+        run: python assemble_video.py
+
+      - name: Genereer thumbnail
+        run: python generate_thumbnail.py
+
+      - name: Upload naar YouTube
+        run: python upload_to_youtube.py
