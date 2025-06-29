@@ -31,7 +31,7 @@ jobs:
       - name: Login to Hugging Face
         run: |
           pip install huggingface_hub
-          huggingface-cli login --token ${{ secrets.HUGGINGFACE_API_KEY }}
+          huggingface-cli login --token $HUGGINGFACE_API_KEY
 
       - name: Init folders
         run: python init_folders.py
@@ -49,6 +49,9 @@ jobs:
 
       - name: Genereer script
         run: python generate_script.py
+
+      - name: Genereer voiceover-zinnen  # <--- TOEGEVOEGD
+        run: python generate_voiceover_texts.py
 
       - name: Genereer voiceover
         run: python generate_voiceover.py
