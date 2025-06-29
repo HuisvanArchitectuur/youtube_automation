@@ -1,41 +1,45 @@
 import os
-import glob
 import json
+import glob
+from pydub import AudioSegment
 
-# Lees voice-over en visual lijst
-voice_files = sorted(glob.glob('data/voiceovers/*.wav'), reverse=True)
-audio_path = voice_files[0]
-output_path = 'data/videos/output.mp4'
-
+# 1. Laad alle visuals uit visual_list.json
 with open('data/videos/visual_list.json', 'r') as f:
     visual_paths = json.load(f)
 
-num_visuals = len(visual_paths)
+# 2. Pak het nieuwste voiceover-bestand (WAV)
+voice_files = sorted(glob.glob('data/voiceovers/*.wav'), reverse=True)
+if not voice_files:
+    raise Exception("Geen voiceover gevonden in data/voiceovers/")
+audio_path = voice_files[0]
 
-# Bepaal audiolengte (in seconden)
-import wave
-with wave.open(audio_path, 'rb') as wav_file:
-    frames = wav_file.getnframes()
-    rate = wav_file.getframerate()
-    duration = frames / float(rate)
+# 3. Meet de lengte van de audio
+audio = AudioSegment.from_wav(audio_path)
+audio_length_sec = len(audio) / 1000  # ms naar seconden
 
-# Duur per beeld (verdeel audio gelijkmatig over alle visuals)
-duration_per_image = duration / num_visuals
+# 4. Bereken de lengte van elk beeld in de video
+n_visuals = len(visual_paths)
+img_duration = audio_length_sec / n_visuals
 
-# Maak een ffmpeg bestand met inputlijst
-with open('data/videos/images.txt', 'w') as f:
-    for path in visual_paths:
-        f.write(f"file '{os.path.abspath(path)}'\n")
-        f.write(f"duration {duration_per_image}\n")
-    # Herhaal laatste beeld zodat de video niet te vroeg stopt
+# 5. Maak een ffmpeg concat-list bestand
+concat_file = "data/videos/concat.txt"
+with open(concat_file, "w") as f:
+    for img in visual_paths:
+        f.write(f"file '{os.path.abspath(img)}'\n")
+        f.write(f"duration {img_duration}\n")
+    # Herhaal laatste frame zodat audio niet voortijdig stopt
     f.write(f"file '{os.path.abspath(visual_paths[-1])}'\n")
 
-# Zet alles om naar video
-cmd = (
-    f"ffmpeg -y -f concat -safe 0 -i data/videos/images.txt "
-    f"-i '{audio_path}' -vsync vfr -pix_fmt yuv420p "
-    f"-c:v libx264 -c:a aac -b:a 192k -shortest '{output_path}'"
+# 6. Genereer een video met beeldwissels
+tmp_video = "data/videos/tmp_visuals.mp4"
+os.system(
+    f"ffmpeg -y -f concat -safe 0 -i {concat_file} -vsync vfr -pix_fmt yuv420p -vf scale=940:528 {tmp_video}"
 )
-os.system(cmd)
+
+# 7. Voeg audio toe aan de video
+output_path = "data/videos/output.mp4"
+os.system(
+    f"ffmpeg -y -i {tmp_video} -i {audio_path} -c:v libx264 -c:a aac -shortest -pix_fmt yuv420p {output_path}"
+)
 
 print(f"Video aangemaakt in {output_path}")
