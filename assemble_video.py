@@ -3,6 +3,7 @@ import json
 import glob
 from pydub import AudioSegment
 
+# Zorg dat output-map altijd bestaat
 os.makedirs('data/videos', exist_ok=True)
 
 # 1. Laad visuals
@@ -14,11 +15,16 @@ with open(visuals_file, 'r') as f:
 if not visual_paths:
     raise Exception("Geen visuals gevonden in visual_list.json")
 
-# 2. Pak nieuwste voiceover
-voice_files = sorted(glob.glob('data/voiceovers/*.wav'), reverse=True)
-if not voice_files:
-    raise Exception("Geen voiceover gevonden in data/voiceovers/")
-audio_path = voice_files[0]
+# 2. Pak voice-over audio (voorrang aan voiceover_combined.wav)
+audio_path = 'data/voiceovers/voiceover_combined.wav'
+if not os.path.exists(audio_path):
+    # Fallback: pak het nieuwste bestand
+    voice_files = sorted(glob.glob('data/voiceovers/*.wav'), reverse=True)
+    if not voice_files:
+        raise Exception("Geen voiceover gevonden in data/voiceovers/")
+    audio_path = voice_files[0]
+
+print(f"[DEBUG] Gebruik audio: {audio_path}")
 
 # 3. Meet de lengte van de audio
 audio = AudioSegment.from_wav(audio_path)
@@ -35,7 +41,7 @@ with open(concat_file, "w") as f:
     for img in visual_paths:
         f.write(f"file '{os.path.abspath(img)}'\n")
         f.write(f"duration {img_duration}\n")
-    # Zorg dat de laatste frame blijft staan tot audio klaar is
+    # Laatste frame blijft staan tot audio klaar is
     f.write(f"file '{os.path.abspath(visual_paths[-1])}'\n")
 
 # 6. Genereer video met beeldwissels
