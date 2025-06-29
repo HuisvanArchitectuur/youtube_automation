@@ -3,26 +3,21 @@ import requests
 import json
 from dotenv import load_dotenv
 from PIL import Image
+import glob
 
 load_dotenv()
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
-# Haal script op en splits in scenes (regels)
-
-import glob
-
+# Zoek het nieuwste scriptbestand (.txt)
 script_files = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
-script_path = script_files[0]   # Pak het nieuwste script
+if not script_files:
+    raise Exception("Geen scriptbestand gevonden in data/scripts/")
+script_path = script_files[0]
 with open(script_path, 'r') as scriptfile:
     script_text = scriptfile.read()
-    # Gebruik altijd het nieuwste scriptbestand
-    script_files = sorted([f for f in os.listdir('data/scripts') if f.endswith('.txt')])
-    if not script_files:
-        raise Exception("Geen scriptbestand gevonden in data/scripts/")
-    with open(f"data/scripts/{script_files[-1]}", "r") as f:
-        script_text = f.read()
 
-scenes = [s.strip() for s in script_text.split('.') if s.strip()]  # Split op punt
+# Splits script op zinnen (op punt), filter lege zinnen eruit
+scenes = [s.strip() for s in script_text.split('.') if s.strip()]
 
 headers = {
     "Authorization": PEXELS_API_KEY
@@ -30,7 +25,7 @@ headers = {
 
 visual_paths = []
 for idx, scene in enumerate(scenes):
-    query = scene[:60]  # Max 60 chars query
+    query = scene[:60]  # Max 60 tekens voor de zoekopdracht
     url = f"https://api.pexels.com/v1/search?query={query}&per_page=1"
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -40,7 +35,7 @@ for idx, scene in enumerate(scenes):
         visual_path = f"data/videos/visual_{idx+1}.jpg"
         with open(visual_path, 'wb') as handler:
             handler.write(img_data)
-        # Optional: zorg dat de afbeelding een even breedte/hoogte heeft
+        # Zorg dat de afbeelding even breedte/hoogte heeft (anders problemen met ffmpeg)
         img = Image.open(visual_path)
         w, h = img.size
         even_w = w - (w % 2)
@@ -52,7 +47,11 @@ for idx, scene in enumerate(scenes):
         visual_paths.append(visual_path)
     else:
         print(f"Geen afbeelding gevonden voor scene: {scene}")
+        # Voeg een standaard afbeelding toe, indien gewenst
+        # visual_paths.append("data/videos/standaard.jpg")
 
 # Sla lijst van visuals op voor gebruik in assemble_video.py
 with open('data/videos/visual_list.json', 'w') as f:
     json.dump(visual_paths, f)
+
+print("Alle visuals gegenereerd en paden opgeslagen in data/videos/visual_list.json")
