@@ -19,7 +19,7 @@ audio_length_sec = len(audio) / 1000  # ms naar seconden
 
 # 4. Bereken de lengte van elk beeld in de video
 n_visuals = len(visual_paths)
-img_duration = audio_length_sec / n_visuals
+img_duration = round(audio_length_sec / n_visuals, 2)
 
 # 5. Maak een ffmpeg concat-list bestand
 concat_file = "data/videos/concat.txt"
@@ -33,7 +33,7 @@ with open(concat_file, "w") as f:
 # 6. Genereer een video met beeldwissels
 tmp_video = "data/videos/tmp_visuals.mp4"
 os.system(
-    f"ffmpeg -y -f concat -safe 0 -i {concat_file} -vsync vfr -pix_fmt yuv420p -vf scale=940:528 {tmp_video}"
+    f"ffmpeg -y -f concat -safe 0 -i {concat_file} -vsync vfr -pix_fmt yuv420p -vf scale=940:528 -r 25 {tmp_video}"
 )
 
 # 7. Voeg audio toe aan de video
