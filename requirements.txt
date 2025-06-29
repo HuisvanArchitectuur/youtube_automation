@@ -8,3 +8,4 @@ TTS     # Coqui TTS voor voice-over
 google-api-python-client
 oauth2client
 tqdm
+pytrends
