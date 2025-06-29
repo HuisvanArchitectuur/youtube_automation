@@ -1,5 +1,6 @@
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow
 from oauth2client.client import flow_from_clientsecrets
@@ -23,7 +24,6 @@ def debug_list_folder(path):
     except Exception as e:
         print(f"[DEBUG] Kan inhoud van {path} niet tonen: {e}")
 
-# Toon even de working directory en inhoud van belangrijke folders
 print("[DEBUG] Huidige working dir:", os.getcwd())
 debug_list_folder(".")
 debug_list_folder("data")
@@ -89,7 +89,7 @@ else:
     print(f"[DEBUG] Video-bestand gevonden: {VIDEO_PATH}, grootte: {os.path.getsize(VIDEO_PATH)} bytes")
 
 print("[DEBUG] Zet MediaFileUpload klaar")
-media = MediaFileUpload(VIDEO_PATH, resumable=True)
+media = MediaFileUpload(VIDEO_PATH, resumable=True, chunksize=5*1024*1024)  # 5 MB chunks
 
 print("[DEBUG] Maak YouTube insert request aan")
 request = youtube.videos().insert(
@@ -98,7 +98,6 @@ request = youtube.videos().insert(
     media_body=media
 )
 
-# Voeg timeout toe voor het geval het uploaden blijft hangen!
 class TimeoutException(Exception): pass
 def handler(signum, frame):
     raise TimeoutException("Upload duurde te lang!")
@@ -108,12 +107,19 @@ UPLOAD_TIMEOUT_SECONDS = 900  # 15 minuten
 signal.alarm(UPLOAD_TIMEOUT_SECONDS)
 
 try:
-    print(f"[DEBUG] Start upload (timeout op {UPLOAD_TIMEOUT_SECONDS // 60} minuten)")
-    response = request.execute()
+    print(f"[DEBUG] Start upload met voortgang (timeout op {UPLOAD_TIMEOUT_SECONDS // 60} minuten)")
+    response = None
+    while response is None:
+        status, response = request.next_chunk()
+        if status:
+            print(f"[DEBUG] Upload voortgang: {int(status.progress() * 100)}%")
     print("[DEBUG] Video geüpload!")
     print(response)
 except TimeoutException:
     print("[ERROR] Upload duurde te lang, mogelijk netwerk/API probleem!")
+except HttpError as e:
+    print(f"[ERROR] Fout van de YouTube API: {e}")
+    print(e.content)
 except Exception as e:
     print(f"[ERROR] Onverwachte fout bij upload: {e}")
     print(traceback.format_exc())
