@@ -1,38 +1,35 @@
 from TTS.api import TTS
-import glob
 import os
+import json
+from pydub import AudioSegment
 
-print("Zoek het nieuwste script...")
-scripts = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
-print("Gevonden scripts:", scripts)
-if not scripts:
-    raise Exception("GEEN scripts gevonden in data/scripts/!")
+# ---- 1. Laad de voice-over teksten per scene ----
+voiceover_texts_path = 'data/voiceovers/voiceover_texts.json'
+if not os.path.exists(voiceover_texts_path):
+    raise FileNotFoundError(f"{voiceover_texts_path} niet gevonden! Genereer eerst voiceover_texts.json.")
 
-script_path = scripts[0]
-print("Nieuwste script:", script_path)
+with open(voiceover_texts_path, 'r', encoding='utf-8') as f:
+    voiceover_texts = json.load(f)
 
-with open(script_path, 'r') as f:
-    text = f.read()
+# ---- 2. Initialiseert TTS met mannelijke, warme stem ----
+# Bijvoorbeeld: tts_models/nl/mai/tacotron2-DDC ondersteunt NL, maar kies eventueel een andere warme mannenstem!
+tts = TTS(model_name="tts_models/nl/mai/tacotron2-DDC", speaker_idx=None, progress_bar=False, gpu=False)
 
-print("Script inhoud (eerste 200 tekens):", text[:200])
+# ---- 3. Maak voiceover fragmenten ----
+output_dir = "data/voiceovers"
+os.makedirs(output_dir, exist_ok=True)
+audio_fragments = []
 
-try:
-    print("Initialiseer TTS...")
-    tts = TTS("tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
-    print("TTS init gelukt.")
-except Exception as e:
-    print("FOUT bij initialiseren TTS:", e)
-    raise
+for idx, text in enumerate(voiceover_texts):
+    out_path = f"{output_dir}/scene_{idx+1}.wav"
+    print(f"[INFO] Synthese scene {idx+1}: {text[:80]}...")
+    # Synthese: 
+    tts.tts_to_file(text=text, file_path=out_path)
+    audio_fragments.append(AudioSegment.from_wav(out_path))
 
-voice_path = f"data/voiceovers/{os.path.basename(script_path).replace('.txt','.wav')}"
-print("Output voice file:", voice_path)
+# ---- 4. Combineer alle audiofragmenten tot 1 voiceover ----
+combined = sum(audio_fragments)
+voiceover_combined_path = f"{output_dir}/voiceover_combined.wav"
+combined.export(voiceover_combined_path, format="wav")
+print(f"[SUCCESS] Voice-over aangemaakt: {voiceover_combined_path}")
 
-try:
-    print("Start synthese...")
-    tts.tts_to_file(text=text, file_path=voice_path)
-    print("Synthese gelukt.")
-except Exception as e:
-    print("FOUT bij synthese:", e)
-    raise
-
-print(f"Voice-over gegenereerd in {voice_path}")
