@@ -6,7 +6,16 @@ generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
 # Haal de top 5 trending onderwerpen van vandaag op via Google Trends NL
 pytrends = TrendReq(hl='nl-NL', tz=360)
-trends = pytrends.trending_searches(pn='netherlands')
+try:
+    trends = pytrends.trending_searches(pn='netherlands')
+except Exception as e:
+    print(f"Trending topics niet beschikbaar (fout: {e}), gebruik fallback onderwerpen.")
+    trends = None
+
+if trends is not None:
+    trending_list = trends[0].tolist()[:5]
+else:
+    trending_list = ["AI", "ChatGPT", "Google", "YouTube", "Automation"]
 trending_list = trends[0].tolist()[:5]
 print("Trending topics van Google Trends:", trending_list)
 
