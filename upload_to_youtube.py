@@ -12,7 +12,7 @@ import signal
 import sys
 import traceback
 
-# Toevoeging voor automatische titel/omschrijving
+# === Toevoeging voor automatische titel/omschrijving ===
 from transformers import pipeline
 import glob
 import re
@@ -77,39 +77,53 @@ youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=crede
 # =======================
 # Toevoeging: Maak automatisch clickbait titel & description
 # =======================
-
 try:
     script_files = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
+    if not script_files:
+        raise Exception("Geen scriptbestand gevonden in data/scripts/")
     with open(script_files[0], 'r') as f:
         script_text = f.read().strip()
     generator = pipeline('text-generation', model='google/flan-t5-small')
 
     prompt = (
-        "Genereer een virale YouTube titel die nieuwsgierig maakt en aanzet tot klikken. Gebruik psychologisch bewezen technieken zoals een vraag, cijfers, geheimen, urgentie, of verrassing. "
+        "Genereer een virale YouTube titel die nieuwsgierig maakt en aanzet tot klikken. "
+        "Gebruik psychologisch bewezen technieken zoals een vraag, cijfers, geheimen, urgentie, of verrassing. "
         "Titel moet maximaal 100 tekens zijn. Hier is het script:\n"
         f"{script_text}\n"
         "Geef alleen de titel terug."
     )
     title_result = generator(prompt, max_length=100)[0]['generated_text'].strip().split('\n')[0]
+    # CLEANUP
+    title_result = re.sub(r'[^\x20-\x7E]', '', title_result)
+    title_result = title_result.strip()[:100]
+    if ("genereer" in title_result.lower() or "titel" in title_result.lower() or len(title_result) < 8):
+        title_result = "Deze AI-video wil je niet missen! 😱 (Trending 2025)"
 
     # Eerste 3 zinnen als description
     script_sents = re.split(r'(?<=[.!?]) +', script_text)
     description = ' '.join(script_sents[:3])
 
-    print(f"[DEBUG] Automatisch gegenereerde titel: {title_result}")
-    print(f"[DEBUG] Automatisch gegenereerde description: {description}")
+    # Tags dynamisch
+    tags = ["AI", "trending", "hack"]
+    if script_sents:
+        tags.append(script_sents[0][:20])
+
+    print(f"[DEBUG] Final YouTube titel: {title_result}")
+    print(f"[DEBUG] Final YouTube description: {description}")
+    print(f"[DEBUG] Final YouTube tags: {tags}")
 
 except Exception as e:
     print(f"[WARNING] Titel/omschrijving automatisch genereren mislukt, gebruik fallback. ({e})")
     title_result = "Clickbait titel (automatisch invullen!)"
     description = "Automatisch gegenereerde beschrijving."
+    tags = ["AI", "trending", "hack"]
 
 print("[DEBUG] Stap 7: Bouw request body op")
 body = dict(
     snippet=dict(
         title=title_result,
         description=description,
-        tags=["AI", "trending", "hack"],
+        tags=tags,
         categoryId="28"
     ),
     status=dict(
