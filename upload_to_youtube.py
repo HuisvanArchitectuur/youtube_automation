@@ -5,15 +5,29 @@ from oauth2client.tools import run_flow
 from oauth2client.client import flow_from_clientsecrets
 import os
 import json
+import signal
+import sys
+import traceback
 
 print("[DEBUG] Start script")
 
-# Veronderstel dat secrets als env vars worden gezet in GitHub Actions
 CLIENT_SECRET_JSON_ENV = "YOUTUBE_CLIENT_SECRET_JSON"
 OAUTH2_JSON_ENV = "YOUTUBE_REFRESH_TOKEN_JSON"
 
 CLIENT_SECRETS_FILE = "client_secret.json"
 TOKEN_FILE = "oauth2.json"
+
+def debug_list_folder(path):
+    try:
+        print(f"[DEBUG] Inhoud van {path}: {os.listdir(path)}")
+    except Exception as e:
+        print(f"[DEBUG] Kan inhoud van {path} niet tonen: {e}")
+
+# Toon even de working directory en inhoud van belangrijke folders
+print("[DEBUG] Huidige working dir:", os.getcwd())
+debug_list_folder(".")
+debug_list_folder("data")
+debug_list_folder("data/videos")
 
 # Schrijf de client_secret.json naar disk als die niet bestaat (vanuit env var)
 if not os.path.isfile(CLIENT_SECRETS_FILE):
@@ -68,6 +82,12 @@ body = dict(
 
 VIDEO_PATH = 'data/videos/output.mp4'
 
+if not os.path.exists(VIDEO_PATH):
+    print(f"[ERROR] Video-bestand bestaat niet: {VIDEO_PATH}")
+    sys.exit(1)
+else:
+    print(f"[DEBUG] Video-bestand gevonden: {VIDEO_PATH}, grootte: {os.path.getsize(VIDEO_PATH)} bytes")
+
 print("[DEBUG] Zet MediaFileUpload klaar")
 media = MediaFileUpload(VIDEO_PATH, resumable=True)
 
@@ -78,8 +98,27 @@ request = youtube.videos().insert(
     media_body=media
 )
 
-print("[DEBUG] Voer upload uit (request.execute())")
-response = request.execute()
+# Voeg timeout toe voor het geval het uploaden blijft hangen!
+class TimeoutException(Exception): pass
+def handler(signum, frame):
+    raise TimeoutException("Upload duurde te lang!")
 
-print("[DEBUG] Video geüpload!")
-print(response)
+signal.signal(signal.SIGALRM, handler)
+UPLOAD_TIMEOUT_SECONDS = 900  # 15 minuten
+signal.alarm(UPLOAD_TIMEOUT_SECONDS)
+
+try:
+    print(f"[DEBUG] Start upload (timeout op {UPLOAD_TIMEOUT_SECONDS // 60} minuten)")
+    response = request.execute()
+    print("[DEBUG] Video geüpload!")
+    print(response)
+except TimeoutException:
+    print("[ERROR] Upload duurde te lang, mogelijk netwerk/API probleem!")
+except Exception as e:
+    print(f"[ERROR] Onverwachte fout bij upload: {e}")
+    print(traceback.format_exc())
+    sys.exit(1)
+finally:
+    signal.alarm(0)  # Zet alarm uit
+
+print("[DEBUG] Einde uploadscript")
