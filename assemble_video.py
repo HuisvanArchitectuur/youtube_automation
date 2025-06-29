@@ -1,4 +1,7 @@
 import os
+
+os.makedirs('data/videos', exist_ok=True)
+import os
 import json
 import glob
 from pydub import AudioSegment
