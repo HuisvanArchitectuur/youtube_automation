@@ -8,7 +8,13 @@ load_dotenv()
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
 # Haal script op en splits in scenes (regels)
-with open('data/scripts', 'r') as scriptfile:
+
+import glob
+
+script_files = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
+script_path = script_files[0]   # Pak het nieuwste script
+with open(script_path, 'r') as scriptfile:
+    script_text = scriptfile.read()
     # Gebruik altijd het nieuwste scriptbestand
     script_files = sorted([f for f in os.listdir('data/scripts') if f.endswith('.txt')])
     if not script_files:
