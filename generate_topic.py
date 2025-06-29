@@ -1,10 +1,19 @@
 from transformers import pipeline
 import json
+from pytrends.request import TrendReq
 
 generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
+# Haal de top 5 trending onderwerpen van vandaag op via Google Trends NL
+pytrends = TrendReq(hl='nl-NL', tz=360)
+trends = pytrends.trending_searches(pn='netherlands')
+trending_list = trends[0].tolist()[:5]
+print("Trending topics van Google Trends:", trending_list)
+
+# LLM prompt, gebaseerd op echte trends
 prompt = (
-    "Noem 5 trending onderwerpen over AI tools, tech-hacks of automatisering, in het Nederlands. Zet elk onderwerp op een aparte regel, alleen het onderwerp (dus geen nummering of extra uitleg)."
+    f"Noem 5 trending onderwerpen gebaseerd op: {', '.join(trending_list)}. "
+    "Zet elk onderwerp op een aparte regel, alleen het onderwerp (dus geen nummering of extra uitleg)."
 )
 
 results = generator(prompt, max_length=100)
@@ -12,7 +21,7 @@ print("LLM output:", results)  # Debug
 
 topics_raw = results[0]['generated_text']
 
-# Splitsen op nieuwe regels, en lege regels eruit filteren
+# Splitsen op nieuwe regels, lege regels eruit filteren
 topics = [t.strip() for t in topics_raw.split('\n') if t.strip()]
 print("Parsed topics:", topics)
 
