@@ -1,56 +1,67 @@
-from transformers import pipeline
+# generate_script.py
+import openai
 import json
-import random
-from pytrends.request import TrendReq
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Load text-to-text model
-generator = pipeline("text2text-generation", model="google/flan-t5-small")
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Setup Google Trends (global / US-based)
-pytrends = TrendReq(hl='en-US', tz=360)
+TOPIC_FILE = "data/topic.json"
+SCRIPT_FILE = "data/scripts/script.txt"
+FACTCHECK_FILE = "data/scripts/factcheck.txt"
 
-try:
-    trends_df = pytrends.trending_searches(pn='united_states')  # Or 'global'
-    trending_list = trends_df[0].tolist()[:5]
-    print("📈 Trending topics from Google Trends:", trending_list)
-except Exception as e:
-    print(f"⚠️ Could not fetch trending topics ({e}). Using fallback list.")
-    trending_list = [
-        "AI replacing human jobs",
-        "Mysterious ancient civilizations",
-        "The future of space travel",
-        "Why do we dream?",
-        "Can animals sense earthquakes?",
-        "Time travel paradoxes",
-        "Dark matter mysteries",
-        "Immortality science breakthroughs"
-    ]
+with open(TOPIC_FILE, "r") as f:
+    topic = json.load(f)["topic"]
 
-# Prompt for LLM to turn trends into video-friendly topics
-prompt = (
-    f"Generate 5 unique, interesting YouTube Shorts topics based on: {', '.join(trending_list)}.\n"
-    "Just list the titles — no explanations, no numbering. Use a catchy, curiosity-driven style."
+print(f"🎯 Generating script for topic: {topic}")
+
+prompt = f"""
+You are a creative and factual YouTube Shorts scriptwriter.
+
+Write a 10-sentence script about: "{topic}".
+
+Each sentence should be 1 scene — engaging, voice-over-ready, based on real facts or plausible science. 
+Start with a hook, build curiosity, and end with a bold or emotional twist.
+
+Do not use numbering, no scene labels. Just output 10 unique, punchy sentences — one per line.
+"""
+
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.85,
+    max_tokens=400
 )
 
-results = generator(prompt, max_length=100)
-print("🧠 LLM output:", results)
+script_text = response['choices'][0]['message']['content']
+scenes = [line.strip() for line in script_text.split("\n") if line.strip()]
+if len(scenes) < 5:
+    raise Exception("Script too short or invalid.")
 
-topics_raw = results[0]['generated_text']
-topics = [t.strip() for t in topics_raw.split('\n') if t.strip()]
-print("✅ Parsed topics:", topics)
+os.makedirs(os.path.dirname(SCRIPT_FILE), exist_ok=True)
+with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
+    for scene in scenes:
+        f.write(scene + "\n")
 
-# Ensure at least 5 topics
-while len(topics) < 5:
-    topics.append(f"Generated Topic {len(topics)+1}")
+print(f"✅ Script saved to: {SCRIPT_FILE}")
 
-# Save full list
-with open("data/trending_topics.json", "w") as f:
-    json.dump(topics, f, indent=2)
+# Optional: factcheck
+factcheck_prompt = f"""
+Fact-check the following 10-sentence YouTube Short script. Correct any misinformation.
 
-# Choose 1 topic to use
-chosen_topic = random.choice(topics)
-with open("data/topic.json", "w") as f:
-    json.dump({"topic": chosen_topic, "generated_at": datetime.now().isoformat()}, f)
+SCRIPT:
+{script_text}
+"""
 
-print(f"🎯 Selected topic for script: {chosen_topic}")
+factcheck = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": factcheck_prompt}],
+    temperature=0.2,
+    max_tokens=400
+)
+with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
+    f.write(factcheck['choices'][0]['message']['content'])
+
+print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
