@@ -29,7 +29,7 @@ Do not use numbering, no scene labels. Just output 10 unique, punchy sentences â
 """
 
 response = openai.chat.completions.create(
-    model="gpt-4",
+    model="gpt-3.5-turbo",
     messages=[{"role": "user", "content": prompt}],
     temperature=0.85,
     max_tokens=400
