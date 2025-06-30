@@ -1,29 +1,25 @@
-from transformers import pipeline
+from transformers import pipeline 
 import json
 import os
 
 generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
-# Laad trending topics
+# 1. Laad trending topics
 with open('data/trending_topics.json') as f:
     topics = json.load(f)
 
 selected_topics = topics[:5]
 print(f"Geselecteerde onderwerpen: {selected_topics}")
 
-# Prompt met focus op feiten, wetenschap en engagement
+# 2. **Super duidelijke prompt voor dia-per-dia voiceover**
 prompt = (
-    f"Schrijf een virale, feitelijke YouTube short script van max 60 seconden, opgedeeld in 5 scènes, "
-    f"elk gebaseerd op één van deze onderwerpen: {', '.join(selected_topics)}.\n"
-    "Voor elke scène:\n"
-    "- Begin met een verrassende hook of vraag (clickbait, spannend of actueel)\n"
-    "- Verwerk recente feiten of wetenschappelijke inzichten (vermeld jaartal/bron als je die weet)\n"
-    "- Voeg humor toe, bouw op naar een cliffhanger\n"
-    "- Eindig met een krachtige call-to-action\n"
-    "- Gebruik psychologisch bewezen technieken om kijkers te boeien\n"
-    "- Wees feitelijk en vermeld geen dingen die je niet zeker weet; als iets onbekend is, wees transparant\n"
-    "Zet elke scène op een aparte regel, zonder nummering of extra uitleg. Houd het begrijpelijk voor jongeren. "
-    "Maak het inspirerend, kort en super engaging. Schrijf alleen de tekst van de scène, geen introducties of afsluitingen."
+    f"Schrijf een virale, feitelijke YouTube short script van max 60 seconden, verdeeld in 5 losse scènes,"
+    f" elk gebaseerd op één van deze onderwerpen: {', '.join(selected_topics)}.\n"
+    "Voor elke scène: schrijf 1 krachtige, zelfstandige, directe zin die door de voice-over wordt uitgesproken."
+    " Gebruik een verrassende hook, recente feiten of wetenschappelijke inzichten (vermeld jaar/bron als bekend), humor, cliffhanger, of call-to-action."
+    " Gebruik psychologische technieken om kijkers vast te houden. Vermijd herhaling, wees concreet en geloofwaardig, overdrijf niet."
+    " Geen nummering, geen uitleg, geen verwijzingen naar afbeeldingen of foto's."
+    " Schrijf elke scène op een nieuwe regel. Alleen de tekst die de voice-over moet zeggen."
 )
 
 results = generator(prompt, max_length=350)
@@ -31,10 +27,10 @@ print("LLM output:", results)  # DEBUG
 
 script_raw = results[0]['generated_text']
 
-# Split scenes (op nieuwe regel)
+# 3. **Split scenes exact per regel**
 scenes = [s.strip() for s in script_raw.split('\n') if s.strip()]
 
-# Opslaan als scriptbestand
+# 4. **Opslaan als scriptbestand**
 output_name = '_'.join([t[:10].replace(' ', '_') for t in selected_topics])
 script_file = f"data/scripts/{output_name}.txt"
 with open(script_file, 'w', encoding='utf-8') as f:
@@ -43,7 +39,7 @@ with open(script_file, 'w', encoding='utf-8') as f:
 
 print(f"[INFO] Script opgeslagen in {script_file}")
 
-# ==== FACTCHECK STAP ====
+# ==== FACTCHECK STAP (optioneel, kan je aan/uit zetten) ====
 fact_checker = pipeline('text2text-generation', model='google/flan-t5-small')
 
 with open(script_file, 'r', encoding='utf-8') as f:
@@ -53,10 +49,10 @@ factcheck_prompt = (
     "Hier is een YouTube short script, gesplitst in scenes:\n"
     f"{script_content}\n"
     "Voor elke scene: "
-    "1. Geef aan of de genoemde feiten recent en waarheidsgetrouw zijn (ja/nee). "
-    "2. Vermeld eventuele twijfel, overdrijving of fictie. "
-    "3. Suggesties voor feitelijke verbetering? "
-    "Zet het antwoord per scene op een aparte regel."
+    "1. Zijn de genoemde feiten recent en waarheidsgetrouw? (ja/nee) "
+    "2. Vermeld twijfel, overdrijving of fictie. "
+    "3. Suggesties voor feitelijke verbetering?"
+    " Zet het antwoord per scene op een nieuwe regel."
 )
 
 factcheck_results = fact_checker(factcheck_prompt, max_length=300)
