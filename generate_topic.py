@@ -1,7 +1,7 @@
 # generate_topic.py
-import openai
 import os
 import json
+import openai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,13 +11,15 @@ TOPIC_FILE = "data/topic.json"
 os.makedirs(os.path.dirname(TOPIC_FILE), exist_ok=True)
 
 prompt = (
-    "Suggest a trending and curiosity-driven YouTube Shorts topic related to science or futuristic technology. "
-    "Return only the title. No hashtags, no formatting."
+    "Give me a short, viral YouTube Shorts topic idea in English related to futuristic AI or science. "
+    "Only return the raw topic title, no hashtags, no explanations."
 )
 
-response = openai.ChatCompletion.create(
+response = openai.chat.completions.create(
     model="gpt-4",
-    messages=[{"role": "user", "content": prompt}],
+    messages=[
+        {"role": "user", "content": prompt}
+    ],
     temperature=0.9,
     max_tokens=50
 )
