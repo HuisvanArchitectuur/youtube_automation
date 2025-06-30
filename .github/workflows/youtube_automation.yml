@@ -9,10 +9,10 @@ jobs:
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}  # ✅ toegevoegd
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
       YOUTUBE_REFRESH_TOKEN_JSON: ${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}
-
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
