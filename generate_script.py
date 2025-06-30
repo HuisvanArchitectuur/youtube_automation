@@ -1,60 +1,45 @@
-from transformers import pipeline
+# generate_script.py
+import openai
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Load generators
-generator = pipeline("text2text-generation", model="google/flan-t5-small")
-fact_checker = pipeline("text2text-generation", model="google/flan-t5-small")
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# File paths
 TOPIC_FILE = "data/topic.json"
 SCRIPT_FILE = "data/scripts/script.txt"
 FACTCHECK_FILE = "data/scripts/factcheck.txt"
 
-# Load topic
 with open(TOPIC_FILE, "r") as f:
-    topic_data = json.load(f)
-topic = topic_data["topic"]
-print(f"🎯 Selected topic: {topic}")
+    topic = json.load(f)["topic"]
 
-# Prompt for script generation
+print(f"🎯 Generating script for topic: {topic}")
+
 prompt = f"""
-You are a creative and factual scriptwriter for YouTube Shorts.
+You are a creative and factual YouTube Shorts scriptwriter.
 
-Write 10 short, standalone sentences for a video on: "{topic}"
+Write a 10-sentence script about: "{topic}".
 
-Each line should be exactly one sentence — engaging, surprising, and ideal for voice-over narration.
+Each sentence should be 1 scene — engaging, voice-over-ready, based on real facts or plausible science. 
+Start with a hook, build curiosity, and end with a bold or emotional twist.
 
-Use a strong hook at the beginning and end with a twist, cliffhanger, or call to action.
-
-Do not repeat the same word more than once per sentence.
-
-Avoid numbering or any formatting — just output 10 clean lines of text.
-
-Example:
-- There's a planet made entirely of diamonds.
-- On Venus, it actually rains metal.
-- One human brain can store more data than all iPhones combined.
+Do not use numbering, no scene labels. Just output 10 unique, punchy sentences — one per line.
 """
 
-# Generate script
-response = generator(prompt, max_length=180)
-script_raw = response[0]['generated_text']
-lines = [line.strip() for line in script_raw.strip().split('\n') if line.strip()]
-scenes = []
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.85,
+    max_tokens=400
+)
 
-# Extra: filter out repetition-only lines like "science fiction"
-for line in lines:
-    if len(set(line.lower().split())) > 3:  # at least 4 unique words
-        scenes.append(line)
-    if len(scenes) == 10:
-        break
+script_text = response['choices'][0]['message']['content']
+scenes = [line.strip() for line in script_text.split("\n") if line.strip()]
+if len(scenes) < 5:
+    raise Exception("Script too short or invalid.")
 
-if len(scenes) < 10:
-    raise Exception("❌ Script generation failed or was too short. Check the model output.")
-
-# Save script
 os.makedirs(os.path.dirname(SCRIPT_FILE), exist_ok=True)
 with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
     for scene in scenes:
@@ -62,19 +47,21 @@ with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
 
 print(f"✅ Script saved to: {SCRIPT_FILE}")
 
-# Optional: Factcheck
+# Optional: factcheck
 factcheck_prompt = f"""
-Here is a 10-sentence script for a YouTube Short:\n\n{script_raw}\n\n
-Please do the following:
-1. Are the facts accurate and plausible?
-2. Correct any exaggerated or false claims.
-3. Return an improved version with 10 clear, factual sentences.
+Fact-check the following 10-sentence YouTube Short script. Correct any misinformation.
+
+SCRIPT:
+{script_text}
 """
 
-factcheck_response = fact_checker(factcheck_prompt, max_length=180)
-factcheck_text = factcheck_response[0]['generated_text']
-
-with open(FACTCHECK_FILE, 'w', encoding='utf-8') as f:
-    f.write(factcheck_text)
+factcheck = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": factcheck_prompt}],
+    temperature=0.2,
+    max_tokens=400
+)
+with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
+    f.write(factcheck['choices'][0]['message']['content'])
 
 print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
