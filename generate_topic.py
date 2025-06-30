@@ -1,31 +1,29 @@
 # generate_topic.py
 import os
 import json
-import openai
+from transformers import pipeline
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
-TOPIC_FILE = "data/topic.json"
-os.makedirs(os.path.dirname(TOPIC_FILE), exist_ok=True)
+# Init model (geen API key nodig!)
+generator = pipeline("text2text-generation", model="google/flan-t5-small")
 
+# Prompt voor topicgeneratie
 prompt = (
-    "Give me a short, viral YouTube Shorts topic idea in English related to futuristic AI or science. "
-    "Only return the raw topic title, no hashtags, no explanations."
+    "Bedenk een origineel, trending en visueel boeiend onderwerp "
+    "voor een YouTube Shorts video. Maximaal 8 woorden. "
+    "Geen hashtags, geen cijfers — enkel het onderwerp."
 )
 
-response = openai.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "user", "content": prompt}
-    ],
-    temperature=0.9,
-    max_tokens=50
-)
+# Genereer het topic
+print("🚀 Genereer YouTube-topic...")
+result = generator(prompt, max_length=20)[0]['generated_text']
+topic = result.strip().strip('"')
 
-topic = response.choices[0].message.content.strip().strip('"')
-with open(TOPIC_FILE, "w", encoding="utf-8") as f:
+# Opslaan
+os.makedirs("data", exist_ok=True)
+with open("data/topic.json", "w") as f:
     json.dump({"topic": topic}, f)
 
-print(f"🎯 Generated topic: {topic}")
+print(f"✅ Topic opgeslagen in data/topic.json: {topic}")
