@@ -8,53 +8,48 @@ from pydub import AudioSegment
 # 📂 Paden
 VISUAL_LIST_PATH = "data/videos/visual_list.json"
 VOICEOVER_DIR = "data/voiceovers"
-OUTPUT_DIR = "data/videos"
-FINAL_OUTPUT = f"{OUTPUT_DIR}/output.mp4"
-CONCAT_LIST = f"{OUTPUT_DIR}/scenes_concat.txt"
+OUTPUT_VIDEO_PATH = "data/videos/output.mp4"
+SCENE_DIR = "data/videos"
+CONCAT_LIST_PATH = f"{SCENE_DIR}/scenes_concat.txt"
 
-# ✅ Check bestanden
+# 📄 Laad visuals
 if not os.path.exists(VISUAL_LIST_PATH):
     raise FileNotFoundError(f"{VISUAL_LIST_PATH} not found!")
-
 with open(VISUAL_LIST_PATH, "r", encoding="utf-8") as f:
-    visual_paths = json.load(f)
-if not visual_paths:
-    raise Exception("❌ visual_list.json is empty.")
+    visuals = json.load(f)
 
+# 🔊 Laad voiceovers
 voice_files = sorted(glob.glob(f"{VOICEOVER_DIR}/voiceover_scene_*.wav"))
-if len(voice_files) != len(visual_paths):
-    raise Exception(f"Mismatch: {len(voice_files)} voice files vs {len(visual_paths)} visuals.")
+if len(visuals) != len(voice_files):
+    raise Exception(f"❌ Mismatch between visuals ({len(visuals)}) and voiceovers ({len(voice_files)})")
 
-# 🔁 Per scene: combineer visual + audio tot clip
-scene_videos = []
-for idx, (img, audio) in enumerate(zip(visual_paths, voice_files)):
-    scene_path = f"{OUTPUT_DIR}/scene_{idx+1}.mp4"
-    audio_duration = AudioSegment.from_wav(audio).duration_seconds
+# 🎬 Maak individuele clips
+scene_paths = []
+for idx, (img, audio) in enumerate(zip(visuals, voice_files)):
+    duration = AudioSegment.from_wav(audio).duration_seconds
+    scene_path = f"{SCENE_DIR}/scene_{idx+1}.mp4"
 
-    ffmpeg_cmd = (
+    cmd = (
         f"ffmpeg -y -loop 1 -i \"{img}\" -i \"{audio}\" "
-        f"-c:v libx264 -t {audio_duration:.2f} -pix_fmt yuv420p "
+        f"-c:v libx264 -t {duration} -pix_fmt yuv420p "
         f"-vf scale=940:528 -c:a aac -shortest -r 25 \"{scene_path}\""
     )
-
-    print(f"[🎬] Rendering scene {idx+1}: {ffmpeg_cmd}")
-    if os.system(ffmpeg_cmd) != 0:
+    print(f"[🔧] Generating scene {idx+1} with ffmpeg...")
+    if os.system(cmd) != 0:
         raise Exception(f"❌ FFmpeg failed for scene {idx+1}")
+    scene_paths.append(scene_path)
 
-    scene_videos.append(scene_path)
+# 📜 Maak concat list
+with open(CONCAT_LIST_PATH, "w") as f:
+    for sp in scene_paths:
+        f.write(f"file '{os.path.abspath(sp)}'\n")
 
-# 📄 Concat list
-with open(CONCAT_LIST, "w") as f:
-    for scene in scene_videos:
-        f.write(f"file '{os.path.abspath(scene)}'\n")
-
-# 🧩 Samenvoegen
-ffmpeg_concat_cmd = (
-    f"ffmpeg -y -f concat -safe 0 -i {CONCAT_LIST} -c copy {FINAL_OUTPUT}"
+# 🎞️ Plak alles samen
+cmd_final = (
+    f"ffmpeg -y -f concat -safe 0 -i \"{CONCAT_LIST_PATH}\" -c copy \"{OUTPUT_VIDEO_PATH}\""
 )
+print("[🎥] Merging scenes into final video...")
+if os.system(cmd_final) != 0:
+    raise Exception("❌ FFmpeg concat failed")
 
-print(f"[🧵] Concatenating scenes into final video...")
-if os.system(ffmpeg_concat_cmd) != 0:
-    raise Exception("❌ FFmpeg concat failed.")
-
-print(f"✅ Final video assembled: {FINAL_OUTPUT}")
+print(f"✅ Video created: {OUTPUT_VIDEO_PATH}")
