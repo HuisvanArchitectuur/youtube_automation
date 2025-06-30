@@ -3,7 +3,6 @@ import json
 import glob
 from pydub import AudioSegment
 
-# Zorg dat output-map altijd bestaat
 os.makedirs('data/videos', exist_ok=True)
 
 # 1. Laad visuals
@@ -15,52 +14,42 @@ with open(visuals_file, 'r') as f:
 if not visual_paths:
     raise Exception("Geen visuals gevonden in visual_list.json")
 
-# 2. Pak voice-over audio (voorrang aan voiceover_combined.wav)
-audio_path = 'data/voiceovers/voiceover_combined.wav'
-if not os.path.exists(audio_path):
-    # Fallback: pak het nieuwste bestand
-    voice_files = sorted(glob.glob('data/voiceovers/*.wav'), reverse=True)
-    if not voice_files:
-        raise Exception("Geen voiceover gevonden in data/voiceovers/")
-    audio_path = voice_files[0]
+# 2. Laad alle losse voiceover_scene_X.wav files (en check lengte)
+voice_files = sorted(glob.glob('data/voiceovers/voiceover_scene_*.wav'))
+if len(voice_files) != len(visual_paths):
+    raise Exception(f"Mismatch tussen visuals ({len(visual_paths)}) en voiceovers ({len(voice_files)}). Check je pipeline.")
 
-print(f"[DEBUG] Gebruik audio: {audio_path}")
+# 3. Voor elke scene: maak een kort mp4-tje van beeld + audio
+scene_videos = []
+for idx, (img, voice) in enumerate(zip(visual_paths, voice_files)):
+    scene_video = f"data/videos/scene_{idx+1}.mp4"
+    # Haal duur van audio in seconden
+    audio = AudioSegment.from_wav(voice)
+    duration = len(audio) / 1000.0
+    # ffmpeg: één plaatje + audio, exact zo lang als audio
+    cmd = (
+        f"ffmpeg -y -loop 1 -i \"{img}\" -i \"{voice}\" "
+        f"-c:v libx264 -t {duration} -pix_fmt yuv420p -vf scale=940:528 "
+        f"-c:a aac -shortest -r 25 \"{scene_video}\""
+    )
+    print(f"[DEBUG] Maak scene-video: {cmd}")
+    if os.system(cmd) != 0:
+        raise Exception(f"ffmpeg scene {idx+1} faalde!")
+    scene_videos.append(scene_video)
 
-# 3. Meet de lengte van de audio
-audio = AudioSegment.from_wav(audio_path)
-audio_length_sec = len(audio) / 1000  # in seconden
-
-# 4. Bereken duur per visual
-n_visuals = len(visual_paths)
-img_duration = round(audio_length_sec / n_visuals, 2)
-print(f"[DEBUG] {n_visuals} visuals, audio: {audio_length_sec:.2f} sec, duration per visual: {img_duration} sec")
-
-# 5. Maak ffmpeg concat-bestand
-concat_file = "data/videos/concat.txt"
+# 4. Maak concat-list voor alle scenes
+concat_file = "data/videos/scenes_concat.txt"
 with open(concat_file, "w") as f:
-    for img in visual_paths:
-        f.write(f"file '{os.path.abspath(img)}'\n")
-        f.write(f"duration {img_duration}\n")
-    # Laatste frame blijft staan tot audio klaar is
-    f.write(f"file '{os.path.abspath(visual_paths[-1])}'\n")
+    for sv in scene_videos:
+        f.write(f"file '{os.path.abspath(sv)}'\n")
 
-# 6. Genereer video met beeldwissels
-tmp_video = "data/videos/tmp_visuals.mp4"
-cmd_img2vid = (
-    f"ffmpeg -y -f concat -safe 0 -i {concat_file} -pix_fmt yuv420p -vf scale=940:528 -r 25 {tmp_video}"
-)
-print(f"[DEBUG] Run images->video: {cmd_img2vid}")
-if os.system(cmd_img2vid) != 0:
-    raise Exception("ffmpeg images->video faalde!")
-
-# 7. Voeg audio toe aan de video
+# 5. Plak alles aan elkaar
 output_path = "data/videos/output.mp4"
 cmd_final = (
-    f"ffmpeg -y -i {tmp_video} -i {audio_path} "
-    f"-c:v libx264 -c:a aac -shortest -pix_fmt yuv420p {output_path}"
+    f"ffmpeg -y -f concat -safe 0 -i {concat_file} -c copy {output_path}"
 )
-print(f"[DEBUG] Run video+audio: {cmd_final}")
+print(f"[DEBUG] Concateneer scenes: {cmd_final}")
 if os.system(cmd_final) != 0:
-    raise Exception("ffmpeg video+audio faalde!")
+    raise Exception("ffmpeg video concat faalde!")
 
 print(f"Video aangemaakt in {output_path}")
