@@ -4,16 +4,14 @@ import os
 
 generator = pipeline('text2text-generation', model='google/flan-t5-small')
 
-# Laad trending topics (zorg dat deze wetenschappelijk/factueel zijn)
+# Laad trending topics
 with open('data/trending_topics.json') as f:
     topics = json.load(f)
 
-# Kies max 5 onderwerpen
 selected_topics = topics[:5]
-
 print(f"Geselecteerde onderwerpen: {selected_topics}")
 
-# Prompt met focus op wetenschappelijke/fact-based content
+# Prompt met focus op feiten, wetenschap en engagement
 prompt = (
     f"Schrijf een virale, feitelijke YouTube short script van max 60 seconden, opgedeeld in 5 scènes, "
     f"elk gebaseerd op één van deze onderwerpen: {', '.join(selected_topics)}.\n"
@@ -44,3 +42,28 @@ with open(script_file, 'w', encoding='utf-8') as f:
         f.write(scene + '\n')
 
 print(f"[INFO] Script opgeslagen in {script_file}")
+
+# ==== FACTCHECK STAP ====
+fact_checker = pipeline('text2text-generation', model='google/flan-t5-small')
+
+with open(script_file, 'r', encoding='utf-8') as f:
+    script_content = f.read()
+
+factcheck_prompt = (
+    "Hier is een YouTube short script, gesplitst in scenes:\n"
+    f"{script_content}\n"
+    "Voor elke scene: "
+    "1. Geef aan of de genoemde feiten recent en waarheidsgetrouw zijn (ja/nee). "
+    "2. Vermeld eventuele twijfel, overdrijving of fictie. "
+    "3. Suggesties voor feitelijke verbetering? "
+    "Zet het antwoord per scene op een aparte regel."
+)
+
+factcheck_results = fact_checker(factcheck_prompt, max_length=300)
+factcheck_output = factcheck_results[0]['generated_text']
+
+factcheck_file = script_file.replace('.txt', '_factcheck.txt')
+with open(factcheck_file, 'w', encoding='utf-8') as f:
+    f.write(factcheck_output)
+
+print(f"[INFO] Factcheck output opgeslagen in {factcheck_file}")
