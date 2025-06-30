@@ -1,59 +1,67 @@
 # generate_script.py
-import os
+
 import json
-from openai import OpenAIError
+import os
+from transformers import pipeline
 from dotenv import load_dotenv
-import openai
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+huggingface_token = os.getenv("HUGGINGFACE_API_KEY")
 
-TOPIC_FILE = "data/topic.json"
-SCRIPT_PATH = "data/scripts/script.txt"
+if not huggingface_token:
+    raise ValueError("❌ HUGGINGFACE_API_KEY niet gevonden in .env of GitHub Secrets.")
 
-# ⬇️ Prompt op basis van jouw wensen
-with open(TOPIC_FILE, "r", encoding="utf-8") as f:
+generator = pipeline(
+    "text-generation",
+    model="tiiuae/falcon-7b-instruct",
+    tokenizer="tiiuae/falcon-7b-instruct",
+    use_auth_token=huggingface_token,
+    device=0 if os.getenv("USE_CUDA", "0") == "1" else -1,
+)
+
+# Laad onderwerp
+with open("data/topic.json", "r") as f:
     topic_data = json.load(f)
-    topic = topic_data.get("topic", "")
+
+topic = topic_data.get("topic", "").strip()
+if not topic:
+    raise Exception("⚠️ Geen geldig onderwerp gevonden in topic.json")
 
 prompt = f"""
-Je taak: schrijf een script voor een YouTube Shorts video over het onderwerp: "{topic}".
-Regels:
-- Gebruik maximaal 8 woorden per zin
-- Maak het visueel en boeiend
-- Gebruik geen hashtags, geen cijfers, geen emoji's
-- Zorg dat het hele script wetenschappelijk klopt en op feiten gebaseerd is
-- Geef elke zin op een nieuwe regel, max 10 regels
+Bedenk een origineel, trending en visueel boeiend script over: "{topic}" 
+voor een YouTube Shorts video.
 
-Alleen het script teruggeven, geen uitleg of formatting.
+Regels:
+- Elke scene bevat exact 2 zinnen
+- Maximaal 8 woorden per zin
+- Geen hashtags, geen cijfers, geen emoji's
+- Wetenschappelijk correct of waargebeurd
+- Visueel aantrekkelijk geformuleerd
+- Maximaal 5 scenes (dus 5 regels)
+- Zet elke scene op een nieuwe regel
+
+⚠️ Alleen de regels van het script teruggeven, zonder extra uitleg.
 """
 
-try:
-    print("🧠 Prompt sturen naar GPT...")
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.85,
-        max_tokens=300
-    )
+print(f"📥 Prompt naar model:\n{prompt}")
 
-    script_raw = response['choices'][0]['message']['content'].strip()
-    lines = [line.strip() for line in script_raw.split("\n") if line.strip()]
-    
-    # 🔎 Check op minimum aantal zinnen
-    if len(lines) < 4:
-        raise Exception("⚠️ Te weinig geldige zinnen gegenereerd.")
+result = generator(prompt, max_new_tokens=250, do_sample=True, temperature=0.7)
+script_output = result[0]['generated_text']
 
-    # 📝 Opslaan
-    os.makedirs(os.path.dirname(SCRIPT_PATH), exist_ok=True)
-    with open(SCRIPT_PATH, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+# Filter en splits regels
+lines = [
+    line.strip()
+    for line in script_output.strip().split("\n")
+    if line.strip() and len(line.split()) >= 4  # minimaal 2 korte zinnen
+]
 
-    print(f"✅ Script opgeslagen in {SCRIPT_PATH} ({len(lines)} zinnen)")
+if len(lines) < 3:
+    raise Exception("⚠️ Te weinig geldige zinnen gegenereerd.")
 
-except OpenAIError as e:
-    print(f"❌ OpenAI fout: {e}")
-    raise
-except Exception as e:
-    print(f"❌ Andere fout bij scriptgeneratie: {e}")
-    raise
+# Opslaan
+os.makedirs("data/scripts", exist_ok=True)
+script_path = "data/scripts/script.txt"
+with open(script_path, "w", encoding="utf-8") as f:
+    f.write("\n".join(lines))
+
+print(f"✅ Script opgeslagen in {script_path}")
