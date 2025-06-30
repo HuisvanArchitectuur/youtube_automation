@@ -1,52 +1,49 @@
+# generate_thumbnail.py
+import openai
 import os
 import json
 from PIL import Image
-from transformers import pipeline
+from dotenv import load_dotenv
+
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Paths
-visual_list_path = 'data/videos/visual_list.json'
-topic_path = 'data/topic.json'
-thumbnail_path = "data/thumbnails/thumb.png"
-title_path = "data/thumbnails/title.txt"
+VISUAL_LIST_PATH = 'data/videos/visual_list.json'
+TOPIC_PATH = 'data/topic.json'
+THUMB_PATH = 'data/thumbnails/thumb.png'
+TITLE_PATH = 'data/thumbnails/title.txt'
 
-# Load visual list
-if not os.path.exists(visual_list_path):
-    raise Exception("❌ visual_list.json not found. Run generate_visuals.py first.")
-
-with open(visual_list_path, 'r') as f:
+# Load image
+with open(VISUAL_LIST_PATH, 'r') as f:
     visuals = json.load(f)
+visual_path = visuals[0]
 
-if not visuals:
-    raise Exception("❌ No visuals found in visual_list.json!")
-
-visual_path = visuals[0]  # Use the first visual
-
-# Create and save thumbnail
 image = Image.open(visual_path).convert("RGB")
-os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
-image.save(thumbnail_path)
-print(f"🖼️ Thumbnail saved to: {thumbnail_path}")
+os.makedirs(os.path.dirname(THUMB_PATH), exist_ok=True)
+image.save(THUMB_PATH)
+print(f"✅ Thumbnail saved to: {THUMB_PATH}")
 
-# Load topic for title generation
-with open(topic_path, 'r') as f:
-    topic_data = json.load(f)
-topic = topic_data["topic"]
+# Generate title
+with open(TOPIC_PATH) as f:
+    topic = json.load(f)["topic"]
 
-# Generate YouTube-style catchy title
-generator = pipeline("text2text-generation", model="google/flan-t5-small")
+prompt = f"""
+Write a viral YouTube Shorts title (max 60 characters) based on the topic: "{topic}"
 
-title_prompt = f"""
-Create a catchy, curiosity-driven YouTube Short video title (max 60 characters) based on the topic: "{topic}".
-
-Avoid hashtags or numbers. Use an engaging, mysterious or exciting tone.
-Only return the title, no quotes or explanations.
+Make it engaging, curiosity-driven, and avoid hashtags or numbers.
+Only return the title, no explanation or formatting.
 """
 
-result = generator(title_prompt, max_length=60)
-title = result[0]['generated_text'].strip().replace('"', '')
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.9,
+    max_tokens=60
+)
 
-# Save title
-with open(title_path, 'w', encoding='utf-8') as f:
+title = response['choices'][0]['message']['content'].strip().strip('"')
+with open(TITLE_PATH, 'w', encoding='utf-8') as f:
     f.write(title)
 
-print(f"📝 Title generated and saved: {title}")
+print(f"📝 Title saved: {title}")
