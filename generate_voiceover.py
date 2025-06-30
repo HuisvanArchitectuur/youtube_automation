@@ -1,37 +1,43 @@
+# generate_voiceover.py
 from TTS.api import TTS
+from pydub import AudioSegment
 import json
 import os
 
-voiceover_texts_path = "data/voiceovers/voiceover_texts.json"
-if not os.path.exists(voiceover_texts_path):
-    raise FileNotFoundError(f"{voiceover_texts_path} niet gevonden! Genereer eerst voiceover_texts.json.")
+VOICE_MODEL = "tts_models/en/ljspeech/glow-tts"  # Warme mannelijke Engelse stem
+INPUT_FILE = "data/voiceovers/voiceover_texts.json"
+OUTPUT_DIR = "data/voiceovers"
+MERGED_FILE = os.path.join(OUTPUT_DIR, "voiceover.wav")
 
-with open(voiceover_texts_path, "r") as f:
+# Stap 1: Laad voice-over zinnen
+if not os.path.exists(INPUT_FILE):
+    raise FileNotFoundError(f"❌ {INPUT_FILE} not found. Please run generate_voiceover_texts.py first.")
+
+with open(INPUT_FILE, "r", encoding="utf-8") as f:
     texts = json.load(f)
 
-# Kies hier een stemmodel
-# ENGLISH: "tts_models/en/ljspeech/glow-tts"
-# DUTCH (NL): "tts_models/nl/mai/tacotron2-DDC"  (alleen als beschikbaar)
-model_name = "tts_models/en/ljspeech/glow-tts"  # Voor warme, mannelijke stem
+# Stap 2: Initialiseer model
+print(f"🗣️ Initializing voice model: {VOICE_MODEL}")
+tts = TTS(model_name=VOICE_MODEL, progress_bar=False)
 
-print("Initialiseer TTS...")
-tts = TTS(model_name=model_name, progress_bar=False)
-
-os.makedirs("data/voiceovers", exist_ok=True)
-
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 voice_files = []
+
+# Stap 3: Genereer losse voice lines
 for idx, text in enumerate(texts):
-    audio_file = f"data/voiceovers/voiceover_scene_{idx+1}.wav"
-    print(f"Genereer voice-over voor scene {idx+1}: {text[:80]}...")
-    tts.tts_to_file(text=text, file_path=audio_file)
-    voice_files.append(audio_file)
+    output_path = os.path.join(OUTPUT_DIR, f"voiceover_scene_{idx+1}.wav")
+    print(f"🎙️ Generating voiceover {idx+1}/{len(texts)}: {text[:60]}...")
+    try:
+        tts.tts_to_file(text=text, file_path=output_path)
+        voice_files.append(output_path)
+    except Exception as e:
+        print(f"⚠️ Error generating voiceover for scene {idx+1}: {e}")
 
-print("Alle losse voice-over bestanden per scene gegenereerd:", voice_files)
+print("✅ Alle losse voice-over bestanden gegenereerd.")
 
-# (OPTIONEEL) Voeg alle audio's samen tot één bestand:
-from pydub import AudioSegment
+# Stap 4: Combineer tot 1 bestand
 audio = AudioSegment.silent(duration=0)
-for audio_file in voice_files:
-    audio += AudioSegment.from_wav(audio_file)
-audio.export("data/voiceovers/voiceover.wav", format="wav")
-print("Samengevoegd audiobestand aangemaakt als voiceover.wav")
+for f in voice_files:
+    audio += AudioSegment.from_wav(f)
+audio.export(MERGED_FILE, format="wav")
+print(f"🔊 Samengevoegde voiceover opgeslagen: {MERGED_FILE}")
