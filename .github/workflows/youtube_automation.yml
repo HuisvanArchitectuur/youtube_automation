@@ -1,7 +1,7 @@
-name: YouTube Automation
+name: YouTube Automation (Hybride Setup)
 
 on:
-  workflow_dispatch:  # handmatig starten
+  workflow_dispatch:
 
 jobs:
   autopost:
@@ -9,12 +9,12 @@ jobs:
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}  # ✅ toegevoegd
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
       YOUTUBE_REFRESH_TOKEN_JSON: ${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}
+
     steps:
-      - name: 📥 Checkout repository
+      - name: 📅 Checkout repository
         uses: actions/checkout@v4
 
       - name: 🐍 Setup Python
@@ -27,7 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🎬 Install ffmpeg
+      - name: 🎮 Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: 🗂️ Init folders
@@ -41,26 +41,22 @@ jobs:
         run: |
           echo '${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}' > oauth2.json
 
-      - name: 🧠 Generate topic
+      - name: 🧠 Genereer topic
         run: python generate_topic.py
 
-      - name: ✍️ Generate script (GPT-4)
+      - name: ✍️ Genereer script (GPT-4)
         run: python generate_script.py
 
-      - name: 🗣️ Genereer voice-over teksten (2-zinnen per scene)
+      - name: 🚤 Genereer voice-over teksten (2-zinnen per scene)
         run: python generate_voiceover_texts.py
 
-      - name: 🔊 Genereer voice-over audio
-        run: python generate_voiceover.py
+      # ⚠️ STOP HIER: lokale workflow neemt nu over!
+      - name: ❌ Stop GitHub workflow na tekst generatie
+        run: exit 0
 
-      - name: 🖼️ Genereer visuals
-        run: python generate_visuals.py
-
-      - name: 🎞️ Assembleer video
-        run: python assemble_video.py
-
-      - name: 🖌️ Genereer thumbnail + titel
-        run: python generate_thumbnail.py
-
-      - name: 🚀 Upload naar YouTube
-        run: python upload_to_youtube.py
+      # De onderstaande stappen gebeuren LOKAAL:
+      # - python generate_voiceover.py
+      # - python generate_visuals.py
+      # - python assemble_video.py
+      # - python generate_thumbnail.py
+      # - python upload_to_youtube.py
