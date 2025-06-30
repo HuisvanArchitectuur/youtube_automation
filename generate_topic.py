@@ -4,49 +4,53 @@ import random
 from pytrends.request import TrendReq
 from datetime import datetime
 
-# LLM pipeline
+# Load text-to-text model
 generator = pipeline("text2text-generation", model="google/flan-t5-small")
 
-# Haal de top 5 trending onderwerpen op via Google Trends NL
-pytrends = TrendReq(hl='nl-NL', tz=360)
+# Setup Google Trends (global / US-based)
+pytrends = TrendReq(hl='en-US', tz=360)
 
 try:
-    trends_df = pytrends.trending_searches(pn='netherlands')
+    trends_df = pytrends.trending_searches(pn='united_states')  # Or 'global'
     trending_list = trends_df[0].tolist()[:5]
-    print("📈 Trending topics van Google Trends:", trending_list)
+    print("📈 Trending topics from Google Trends:", trending_list)
 except Exception as e:
-    print(f"⚠️ Trending topics niet beschikbaar (fout: {e}), gebruik fallback onderwerpen.")
-    trending_list = ["AI", "ChatGPT", "Ruimtevaart", "Bizarre feiten", "Natuurwonderen", "Grote uitvindingen", "Onsterfelijkheid", "Vergeten beschavingen"]
+    print(f"⚠️ Could not fetch trending topics ({e}). Using fallback list.")
+    trending_list = [
+        "AI replacing human jobs",
+        "Mysterious ancient civilizations",
+        "The future of space travel",
+        "Why do we dream?",
+        "Can animals sense earthquakes?",
+        "Time travel paradoxes",
+        "Dark matter mysteries",
+        "Immortality science breakthroughs"
+    ]
 
-# Genereer 5 creatieve onderwerpen obv deze trends
+# Prompt for LLM to turn trends into video-friendly topics
 prompt = (
-    f"Noem 5 unieke, pakkende YouTube short onderwerpen gebaseerd op: {', '.join(trending_list)}.\n"
-    "Geef alleen het onderwerp per regel – dus geen uitleg, geen nummering. "
-    "Stijl: creatief, informatief, met een haakje (hook), geschikt voor virale shorts."
+    f"Generate 5 unique, interesting YouTube Shorts topics based on: {', '.join(trending_list)}.\n"
+    "Just list the titles — no explanations, no numbering. Use a catchy, curiosity-driven style."
 )
 
 results = generator(prompt, max_length=100)
 print("🧠 LLM output:", results)
 
 topics_raw = results[0]['generated_text']
-
-# Splits op nieuwe regels, filter lege regels
 topics = [t.strip() for t in topics_raw.split('\n') if t.strip()]
-print("✅ Verwerkte topics:", topics)
+print("✅ Parsed topics:", topics)
 
-# Indien minder dan 5, vul aan met dummy onderwerpen
+# Ensure at least 5 topics
 while len(topics) < 5:
-    topics.append(f"Onderwerp {len(topics)+1}")
+    topics.append(f"Generated Topic {len(topics)+1}")
 
-# Sla volledige lijst op
+# Save full list
 with open("data/trending_topics.json", "w") as f:
     json.dump(topics, f, indent=2)
 
-# Kies 1 random topic voor deze video
+# Choose 1 topic to use
 chosen_topic = random.choice(topics)
-
-# Sla geselecteerde topic op voor downstream script
 with open("data/topic.json", "w") as f:
     json.dump({"topic": chosen_topic, "generated_at": datetime.now().isoformat()}, f)
 
-print(f"🎯 Gekozen onderwerp: {chosen_topic}")
+print(f"🎯 Selected topic for script: {chosen_topic}")
