@@ -8,7 +8,7 @@ import glob
 load_dotenv()
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
-# Zoek het nieuwste scriptbestand (.txt)
+# Haal de titel van de video uit het scriptbestand of een apart bestand
 script_files = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
 if not script_files:
     raise Exception("Geen scriptbestand gevonden in data/scripts/")
@@ -16,16 +16,21 @@ script_path = script_files[0]
 with open(script_path, 'r') as scriptfile:
     script_text = scriptfile.read()
 
-# Splits script op zinnen (op punt), filter lege zinnen eruit
+# Probeer de titel te halen (eerste regel, of met regex)
+video_title = script_text.split('\n')[0]
+if len(video_title) < 5:
+    video_title = "AI technologie"  # fallback
+
+# Splits script op scenes/zinnen, filter lege zinnen eruit
 scenes = [s.strip() for s in script_text.split('.') if s.strip()]
 
-headers = {
-    "Authorization": PEXELS_API_KEY
-}
-
+headers = {"Authorization": PEXELS_API_KEY}
 visual_paths = []
-for idx, scene in enumerate(scenes):
-    query = scene[:60]  # Max 60 tekens voor de zoekopdracht
+MAX_VISUALS = 5  # **Pas dit aan als je meer/minder visuals wilt**
+
+for idx, scene in enumerate(scenes[:MAX_VISUALS]):
+    # **Prompt optimalisatie**: Voeg AI/tech-context toe
+    query = f"AI technologie, digitale innovatie, {video_title}, {scene[:30]}"
     url = f"https://api.pexels.com/v1/search?query={query}&per_page=1"
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -35,7 +40,7 @@ for idx, scene in enumerate(scenes):
         visual_path = f"data/videos/visual_{idx+1}.jpg"
         with open(visual_path, 'wb') as handler:
             handler.write(img_data)
-        # Zorg dat de afbeelding even breedte/hoogte heeft (anders problemen met ffmpeg)
+        # Maak breedte/hoogte even (anders ffmpeg error)
         img = Image.open(visual_path)
         w, h = img.size
         even_w = w - (w % 2)
@@ -47,8 +52,16 @@ for idx, scene in enumerate(scenes):
         visual_paths.append(visual_path)
     else:
         print(f"Geen afbeelding gevonden voor scene: {scene}")
-        # Voeg een standaard afbeelding toe, indien gewenst
-        # visual_paths.append("data/videos/standaard.jpg")
+        # Voeg een default afbeelding toe
+        default_img = "data/videos/default_visual.jpg"
+        if os.path.exists(default_img):
+            visual_paths.append(default_img)
+        else:
+            # Maak 1x een dummy (zwart) beeld als deze niet bestaat
+            if not os.path.exists("data/videos"):
+                os.makedirs("data/videos")
+            Image.new('RGB', (940, 528), color='black').save(default_img)
+            visual_paths.append(default_img)
 
 # Sla lijst van visuals op voor gebruik in assemble_video.py
 with open('data/videos/visual_list.json', 'w') as f:
