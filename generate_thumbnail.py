@@ -1,49 +1,52 @@
 # generate_thumbnail.py
+
 import openai
 import os
 import json
 from PIL import Image
 from dotenv import load_dotenv
 
+# 🔑 Laad API key
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Paths
-VISUAL_LIST_PATH = 'data/videos/visual_list.json'
-TOPIC_PATH = 'data/topic.json'
-THUMB_PATH = 'data/thumbnails/thumb.png'
-TITLE_PATH = 'data/thumbnails/title.txt'
+# 📂 Paden
+VISUAL_LIST_PATH = "data/videos/visual_list.json"
+TOPIC_PATH = "data/topic.json"
+THUMB_PATH = "data/thumbnails/thumb.png"
+TITLE_PATH = "data/thumbnails/title.txt"
 
-# Load first image
+# 🖼️ Laad eerste visueel als thumbnail
 with open(VISUAL_LIST_PATH, 'r') as f:
     visuals = json.load(f)
-visual_path = visuals[0]
-
-image = Image.open(visual_path).convert("RGB")
+if not visuals:
+    raise Exception("❌ Geen visuals beschikbaar!")
+thumb_source = visuals[0]
+image = Image.open(thumb_source).convert("RGB")
 os.makedirs(os.path.dirname(THUMB_PATH), exist_ok=True)
 image.save(THUMB_PATH)
-print(f"✅ Thumbnail saved to: {THUMB_PATH}")
+print(f"✅ Thumbnail image opgeslagen: {THUMB_PATH}")
 
-# Generate title
-with open(TOPIC_PATH) as f:
+# 🎯 Laad onderwerp
+with open(TOPIC_PATH, "r", encoding="utf-8") as f:
     topic = json.load(f)["topic"]
 
+# 🧠 Genereer clickbait-titel met GPT-4
 prompt = f"""
-Write a viral YouTube Shorts title (max 60 characters) based on the topic: "{topic}"
+Create a viral YouTube Shorts title (max 60 characters) for the topic: "{topic}"
 
-Make it engaging, curiosity-driven, and avoid hashtags or numbers.
-Only return the title, no explanation or formatting.
+Make it curiosity-driven, emotional or surprising. Do NOT include hashtags, emojis, or numbers. Output ONLY the title.
 """
 
-response = openai.chat.completions.create(
-    model="gpt-3.5-turbo",
+response = openai.ChatCompletion.create(
+    model="gpt-4",
     messages=[{"role": "user", "content": prompt}],
     temperature=0.9,
-    max_tokens=60
+    max_tokens=50
 )
 
-title = response.choices[0].message.content.strip().strip('"')
+title = response['choices'][0]['message']['content'].strip().strip('"')
 with open(TITLE_PATH, 'w', encoding='utf-8') as f:
     f.write(title)
 
-print(f"📝 Title saved: {title}")
+print(f"📝 Title opgeslagen: {title}")
