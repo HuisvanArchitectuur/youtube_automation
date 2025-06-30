@@ -1,69 +1,57 @@
 # generate_script.py
-import openai
-import json
 import os
+import json
+from transformers import pipeline
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 TOPIC_FILE = "data/topic.json"
 SCRIPT_FILE = "data/scripts/script.txt"
 FACTCHECK_FILE = "data/scripts/factcheck.txt"
 
-# Load topic
+# Topic laden
 with open(TOPIC_FILE, "r") as f:
     topic = json.load(f)["topic"]
 
-print(f"🎯 Generating script for topic: {topic}")
+print(f"🎯 Genereer script voor topic: {topic}")
 
-prompt = f"""
-You are a creative and factual YouTube Shorts scriptwriter.
+# Init model
+generator = pipeline("text2text-generation", model="google/flan-t5-small")
 
-Write a 10-sentence script about: "{topic}".
-
-Each sentence should be 1 scene — engaging, voice-over-ready, based on real facts or plausible science. 
-Start with a hook, build curiosity, and end with a bold or emotional twist.
-
-Do not use numbering, no scene labels. Just output 10 unique, punchy sentences — one per line.
-"""
-
-response = openai.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.85,
-    max_tokens=400
+# Prompt met ALLE eisen
+prompt = (
+    f"You are a viral YouTube Shorts scriptwriter.\n\n"
+    f"Write a script of 10 **independent sentences** about the topic: \"{topic}\".\n\n"
+    "Each sentence will become a separate scene with a voice-over.\n"
+    "✅ Start with a strong hook.\n"
+    "✅ End with a cliffhanger or emotional twist.\n"
+    "✅ Each sentence must be based on **real facts**, science, or plausible information.\n"
+    "✅ Each line must be punchy, interesting, and storytelling-style.\n"
+    "❌ Do not use numbers or labels.\n"
+    "❌ Do not mention images or visuals.\n"
+    "Write exactly 10 separate lines, ready for English voice-over."
 )
 
-script_text = response.choices[0].message.content.strip()
-scenes = [line.strip() for line in script_text.split("\n") if line.strip()]
-if len(scenes) < 5:
-    raise Exception("Script too short or invalid.")
+# Genereer
+result = generator(prompt, max_length=350)[0]['generated_text']
+scenes = [line.strip() for line in result.strip().split('\n') if line.strip()]
 
-# Save script
+if len(scenes) < 8:
+    raise Exception("⚠️ Te weinig geldige zinnen gegenereerd.")
+
+# Opslaan
 os.makedirs(os.path.dirname(SCRIPT_FILE), exist_ok=True)
 with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
-    for scene in scenes:
+    for scene in scenes[:10]:
         f.write(scene + "\n")
 
-print(f"✅ Script saved to: {SCRIPT_FILE}")
+print(f"✅ Script opgeslagen: {SCRIPT_FILE}")
 
-# Factcheck
-factcheck_prompt = f"""
-Fact-check the following 10-sentence YouTube Short script. Correct any misinformation.
+# Dummy factcheck
+with open(FACTCHECK_FILE, 'w', encoding='utf-8') as f:
+    f.write("🔍 Factcheck (not available in free Hugging Face version). Please verify manually.\n\n")
+    for scene in scenes[:10]:
+        f.write(f"- {scene}\n")
 
-SCRIPT:
-{script_text}
-"""
-
-factcheck = openai.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": factcheck_prompt}],
-    temperature=0.2,
-    max_tokens=400
-)
-
-with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
-    f.write(factcheck.choices[0].message.content)
-
-print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
+print(f"🧪 Factcheck opgeslagen (placeholder): {FACTCHECK_FILE}")
