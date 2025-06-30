@@ -1,3 +1,5 @@
+# ✅ GITHUB WORKFLOW (youtube_automation.yml)
+
 name: YouTube Automation
 
 on:
@@ -8,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-      HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+      YOUTUBE_REFRESH_TOKEN_JSON: ${{ secrets.YOUTUBE_REFRESH_TOKEN_JSON }}
 
     steps:
       - name: Checkout code
@@ -28,17 +29,12 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Login to Hugging Face
-        run: |
-          pip install huggingface_hub
-          huggingface-cli login --token $HUGGINGFACE_API_KEY
-
       - name: Init folders
         run: python init_folders.py
 
       - name: Maak client_secret.json aan vanuit secret
         run: |
-          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' | python3 -c "import sys, json; json.dump(json.loads(sys.stdin.read()), open('client_secret.json','w'))"
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
 
       - name: Maak oauth2.json aan vanuit secret
         run: |
@@ -50,7 +46,7 @@ jobs:
       - name: Genereer script
         run: python generate_script.py
 
-      - name: Genereer voiceover-zinnen  # <--- TOEGEVOEGD
+      - name: Genereer voiceover-zinnen
         run: python generate_voiceover_texts.py
 
       - name: Genereer voiceover
