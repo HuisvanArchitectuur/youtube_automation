@@ -22,23 +22,25 @@ You are a creative and factual YouTube Shorts scriptwriter.
 
 Write a 10-sentence script about: "{topic}".
 
-Each sentence should be 1 scene — engaging, voice-over-ready, based on real facts or plausible science. 
+Each sentence should be one scene — engaging, voice-over-ready, and based on real facts or plausible science. 
 Start with a hook, build curiosity, and end with a bold or emotional twist.
 
-Do not use numbering, no scene labels. Just output 10 unique, punchy sentences — one per line.
+Avoid numbers or scene labels. Output only 10 punchy lines, one per line.
 """
 
-response = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.85,
-    max_tokens=400
-)
-
-script_text = response['choices'][0]['message']['content']
-scenes = [line.strip() for line in script_text.split("\n") if line.strip()]
-if len(scenes) < 5:
-    raise Exception("Script too short or invalid.")
+try:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.85,
+        max_tokens=400
+    )
+    script_text = response['choices'][0]['message']['content'].strip()
+    scenes = [line.strip().strip('"') for line in script_text.split("\n") if line.strip()]
+    if len(scenes) < 6:
+        raise ValueError("Script output too short or invalid.")
+except Exception as e:
+    raise RuntimeError(f"❌ Failed to generate script: {e}")
 
 os.makedirs(os.path.dirname(SCRIPT_FILE), exist_ok=True)
 with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
@@ -49,19 +51,20 @@ print(f"✅ Script saved to: {SCRIPT_FILE}")
 
 # Optional: factcheck
 factcheck_prompt = f"""
-Fact-check the following 10-sentence YouTube Short script. Correct any misinformation.
+Fact-check the following YouTube Short script. Correct any errors, exaggerations, or inaccuracies:
 
-SCRIPT:
 {script_text}
 """
 
-factcheck = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": factcheck_prompt}],
-    temperature=0.2,
-    max_tokens=400
-)
-with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
-    f.write(factcheck['choices'][0]['message']['content'])
-
-print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
+try:
+    factcheck = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": factcheck_prompt}],
+        temperature=0.2,
+        max_tokens=400
+    )
+    with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
+        f.write(factcheck['choices'][0]['message']['content'])
+    print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
+except Exception as e:
+    print(f"⚠️ Factcheck failed: {e}")
