@@ -1,51 +1,36 @@
 # generate_voiceover_texts.py
-import openai
 import json
-import glob
 import os
-from dotenv import load_dotenv
+import glob
+from transformers import pipeline
 
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Zoek laatste script
+script_files = sorted(glob.glob("data/scripts/*.txt"), reverse=True)
+if not script_files:
+    raise FileNotFoundError("⚠️ Geen scriptbestand gevonden in data/scripts/")
 
-# Laad het meest recente scriptbestand
-scripts = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
-if not scripts:
-    raise FileNotFoundError("❌ No scripts found in data/scripts/")
-script_path = scripts[0]
+with open(script_files[0], "r", encoding="utf-8") as f:
+    lines = [line.strip() for line in f.readlines() if line.strip()]
 
-with open(script_path, 'r') as f:
-    scenes = [line.strip() for line in f if line.strip()]
+# Init model
+generator = pipeline("text2text-generation", model="google/flan-t5-small")
 
-print(f"🎬 Found {len(scenes)} scenes.")
-
+# Genereer voice-over-ready tekst
 voiceover_texts = []
+for idx, line in enumerate(lines):
+    prompt = (
+        "Rewrite this scene as a natural-sounding, engaging voice-over for a short YouTube video. "
+        "Use a warm, friendly male tone. Maximum 2 sentences.\n"
+        f"Scene: {line}"
+    )
+    result = generator(prompt, max_length=80)[0]['generated_text']
+    voiceover_texts.append(result.strip())
 
-for idx, scene in enumerate(scenes):
-    prompt = f"""
-Rewrite this sentence into a smooth, engaging voice-over line for a YouTube Short. 
-Use a warm, friendly male tone. Max 2 sentences.
-
-Scene: "{scene}"
-Only return the rewritten voice-over line.
-"""
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.8,
-            max_tokens=80
-        )
-        text = response['choices'][0]['message']['content'].strip().strip('"')
-        voiceover_texts.append(text)
-        print(f"✅ [{idx+1}] {text}")
-    except Exception as e:
-        print(f"⚠️ Error for scene {idx+1}: {e}")
-        voiceover_texts.append(scene)
-
-# Sla op voor TTS
+# Opslaan
 os.makedirs("data/voiceovers", exist_ok=True)
-with open('data/voiceovers/voiceover_texts.json', 'w') as f:
-    json.dump(voiceover_texts, f, ensure_ascii=False, indent=2)
+with open("data/voiceovers/voiceover_texts.json", "w", encoding="utf-8") as f:
+    json.dump(voiceover_texts, f, indent=2, ensure_ascii=False)
 
-print("✅ Voice-over lines saved to data/voiceovers/voiceover_texts.json")
+print("✅ Voice-over teksten gegenereerd per scene:")
+for i, txt in enumerate(voiceover_texts, 1):
+    print(f"Scene {i}: {txt}")
