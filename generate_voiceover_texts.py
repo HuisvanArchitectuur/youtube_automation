@@ -1,36 +1,51 @@
-from transformers import pipeline
+# generate_voiceover_texts.py
+import openai
 import json
 import glob
 import os
+from dotenv import load_dotenv
 
-# Zoek automatisch het nieuwste scriptbestand
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Laad het meest recente scriptbestand
 scripts = sorted(glob.glob('data/scripts/*.txt'), reverse=True)
 if not scripts:
-    raise FileNotFoundError("Geen scripts gevonden in data/scripts/")
+    raise FileNotFoundError("❌ No scripts found in data/scripts/")
 script_path = scripts[0]
 
 with open(script_path, 'r') as f:
-    script_text = f.read()
+    scenes = [line.strip() for line in f if line.strip()]
 
-# Scenes splitsen (bijv. op punt of op je eigen delimiter, hier op punt)
-scenes = [s.strip() for s in script_text.split('.') if s.strip()]
-
-# Initialiseer generator
-generator = pipeline('text2text-generation', model='google/flan-t5-small')
+print(f"🎬 Found {len(scenes)} scenes.")
 
 voiceover_texts = []
-for scene in scenes:
-    prompt = (
-        "Herschrijf deze scene als een korte, vloeiende YouTube voice-over tekst. "
-        "Gebruik een warme, vriendelijke mannelijke toon. Maximaal 2 zinnen. "
-        f"Scene: '{scene}'"
-    )
-    result = generator(prompt, max_length=80)[0]['generated_text']
-    voiceover_texts.append(result.strip())
 
-# Sla op als JSON voor TTS input
+for idx, scene in enumerate(scenes):
+    prompt = f"""
+Rewrite this sentence into a smooth, engaging voice-over line for a YouTube Short. 
+Use a warm, friendly male tone. Max 2 sentences.
+
+Scene: "{scene}"
+Only return the rewritten voice-over line.
+"""
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8,
+            max_tokens=80
+        )
+        text = response['choices'][0]['message']['content'].strip().strip('"')
+        voiceover_texts.append(text)
+        print(f"✅ [{idx+1}] {text}")
+    except Exception as e:
+        print(f"⚠️ Error for scene {idx+1}: {e}")
+        voiceover_texts.append(scene)
+
+# Sla op voor TTS
 os.makedirs("data/voiceovers", exist_ok=True)
 with open('data/voiceovers/voiceover_texts.json', 'w') as f:
     json.dump(voiceover_texts, f, ensure_ascii=False, indent=2)
 
-print("Voiceover teksten per scene gegenereerd!")
+print("✅ Voice-over lines saved to data/voiceovers/voiceover_texts.json")
