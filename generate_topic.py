@@ -1,67 +1,62 @@
-# generate_script.py
+# generate_topic.py
 import openai
 import json
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-TOPIC_FILE = "data/topic.json"
-SCRIPT_FILE = "data/scripts/script.txt"
-FACTCHECK_FILE = "data/scripts/factcheck.txt"
+TOPIC_OUTPUT = "data/topic.json"
+TRENDING_OUTPUT = "data/trending_topics.json"
 
-with open(TOPIC_FILE, "r") as f:
-    topic = json.load(f)["topic"]
+# Stap 1: Prompt
+prompt = """
+Generate 5 unique and engaging YouTube Shorts topics based on current global trends and evergreen viral subjects.
 
-print(f"🎯 Generating script for topic: {topic}")
+Each topic should be short, curiosity-driven, and ideal for a 60-second video.
 
-prompt = f"""
-You are a creative and factual YouTube Shorts scriptwriter.
+Do not number them, and don't add explanations.
 
-Write a 10-sentence script about: "{topic}".
-
-Each sentence should be 1 scene — engaging, voice-over-ready, based on real facts or plausible science. 
-Start with a hook, build curiosity, and end with a bold or emotional twist.
-
-Do not use numbering, no scene labels. Just output 10 unique, punchy sentences — one per line.
+Examples:
+- Why your brain can't resist sugar
+- The mystery of black holes
+- What if time stopped for 1 second
+- AI that's smarter than humans
+- How octopuses escape any trap
 """
 
-response = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.85,
-    max_tokens=400
-)
+# Stap 2: Vraag GPT-4 om onderwerpen
+try:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.8,
+        max_tokens=200
+    )
+    result = response["choices"][0]["message"]["content"]
+    topics = [t.strip("-• ").strip() for t in result.strip().split("\n") if t.strip()]
+    print(f"✅ Topics generated: {topics}")
+except Exception as e:
+    print(f"⚠️ GPT-4 failed: {e}")
+    topics = [
+        "The strangest place on Earth",
+        "What if humans had night vision",
+        "Why cats always land on their feet",
+        "Secrets of the Bermuda Triangle",
+        "The truth about immortality"
+    ]
 
-script_text = response['choices'][0]['message']['content']
-scenes = [line.strip() for line in script_text.split("\n") if line.strip()]
-if len(scenes) < 5:
-    raise Exception("Script too short or invalid.")
+# Stap 3: Save als lijst
+os.makedirs(os.path.dirname(TRENDING_OUTPUT), exist_ok=True)
+with open(TRENDING_OUTPUT, "w") as f:
+    json.dump(topics, f, indent=2)
 
-os.makedirs(os.path.dirname(SCRIPT_FILE), exist_ok=True)
-with open(SCRIPT_FILE, 'w', encoding='utf-8') as f:
-    for scene in scenes:
-        f.write(scene + "\n")
+# Stap 4: Kies er één voor deze video
+chosen = random.choice(topics)
+with open(TOPIC_OUTPUT, "w") as f:
+    json.dump({"topic": chosen, "generated_at": datetime.now().isoformat()}, f)
 
-print(f"✅ Script saved to: {SCRIPT_FILE}")
-
-# Optional: factcheck
-factcheck_prompt = f"""
-Fact-check the following 10-sentence YouTube Short script. Correct any misinformation.
-
-SCRIPT:
-{script_text}
-"""
-
-factcheck = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": factcheck_prompt}],
-    temperature=0.2,
-    max_tokens=400
-)
-with open(FACTCHECK_FILE, "w", encoding="utf-8") as f:
-    f.write(factcheck['choices'][0]['message']['content'])
-
-print(f"🧪 Factcheck saved to: {FACTCHECK_FILE}")
+print(f"🎯 Selected topic: {chosen}")
